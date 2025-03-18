@@ -1,0 +1,70 @@
+# MCAutoRestart configuration
+# Plugin by MCAutoRestartTeam
+
+# Включить/отключить автоматические перезапуски (true/false)
+# Enable/disable automatic restarts (true/false)
+restart-enabled: true
+
+# Режим перезапуска: "interval" (каждые X часов) или "fixed" (в определенное время)
+# Restart mode: "interval" (every X hours) or "fixed" (at specific times)
+restart-mode: "interval"
+
+# Настройки интервального режима (используется, если restart-mode: "interval")
+# Interval mode settings (used if restart-mode: "interval")
+interval:
+  # Интервал перезапуска в часах (например, 4 для перезапуска каждые 4 часа)
+  # Restart interval in hours (e.g., 4 for restart every 4 hours)
+  hours: 4
+  
+  # Минуты в час для перезапуска (0-59)
+  # Minutes in the hour for restart (0-59)
+  minutes: 5
+
+# Настройки фиксированного режима (используется, если restart-mode: "fixed")
+# Fixed mode settings (used if restart-mode: "fixed")
+fixed:
+  # Список времен перезапуска в формате ЧЧ:ММ (24-часовой формат)
+  # List of restart times in HH:MM format (24-hour format)
+  times:
+    - "06:00"
+    - "14:00"
+    - "22:00"
+
+# Настройки оповещений
+# Notification settings
+notifications:
+  # Предупреждения о перезапуске
+  # Restart warnings
+  warnings:
+    # Включить/отключить предупреждения
+    # Enable/disable warnings
+    enabled: true
+    
+    # До какого времени (в минутах) оповещать игроков перед рестартом
+    # How far in advance (in minutes) to notify players before restart
+    max_minutes_before: 60
+    
+    # Времена предупреждений в минутах перед рестартом
+    # Warning times in minutes before restart
+    minutes: [60, 30, 15, 10, 5, 4, 3, 2, 1]
+    
+    # Времена предупреждений в секундах перед рестартом (в последнюю минуту)
+    # Warning times in seconds before restart (in the last minute)
+    seconds: [30, 15, 10, 5, 4, 3, 2, 1]
+
+# Настройки языка
+# Language settings
+language:
+  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp"
+  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp"
+  default: "ru_rus"
+
+# Сообщения при рестарте (резервные)
+# Restart messages (fallback)
+# Примечание: Перенесены в языковые файлы. Эти настройки используются только если языковой файл недоступен.
+# Note: Moved to language files. These settings are used only if the language file is not available.
+messages:
+  prefix: "&e[MCAutoRestart] &c"
+  restart: "Перезапуск сервера..."
+  warning-minutes: "Внимание! Автоматический рестарт сервера через %time% мин."
+  warning-seconds: "Внимание! Автоматический рестарт сервера через %time% сек." 
