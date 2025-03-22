@@ -119,7 +119,8 @@ The plugin allows for flexible configuration of the notification system:
 
 ## Requirements
 
-- Minecraft 1.20.x
+- Minecraft 1.13 or newer
+- Java 8 or newer
 - Bukkit/Spigot/Paper server
 
 ## License

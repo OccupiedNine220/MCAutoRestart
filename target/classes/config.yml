@@ -52,11 +52,48 @@ notifications:
     # Warning times in seconds before restart (in the last minute)
     seconds: [30, 15, 10, 5, 4, 3, 2, 1]
 
+# Настройки боссбара
+# BossBar settings
+bossbar:
+  # Включить/отключить боссбар (true/false)
+  # Enable/disable bossbar (true/false)
+  enabled: true
+  
+  # Когда показывать боссбар (в минутах до рестарта)
+  # When to show the bossbar (in minutes before restart)
+  show_minutes_before: 10
+  
+  # Цвет боссбара (BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW)
+  # BossBar color (BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW)
+  color: RED
+  
+  # Стиль боссбара (SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20)
+  # BossBar style (SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20)
+  style: SOLID
+
+# Настройки совместимости с другими плагинами
+# Compatibility settings with other plugins
+compatibility:
+  # Защищенные плагины (их задачи не будут отключены при рестарте)
+  # Protected plugins (their tasks won't be cancelled during restart)
+  protected_plugins:
+    - "Essentials"
+    - "WorldGuard"
+    - "LuckPerms"
+  
+  # Режим рестарта (NORMAL - обычный, GRACEFUL - плавный)
+  # Restart mode (NORMAL - normal, GRACEFUL - graceful)
+  restart_mode: "GRACEFUL"
+  
+  # Задержка перед рестартом в секундах (для graceful режима)
+  # Delay before restart in seconds (for graceful mode)
+  graceful_delay_seconds: 5
+
 # Настройки языка
 # Language settings
 language:
-  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp"
-  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp"
+  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz"
+  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz"
   default: "ru_rus"
 
 # Сообщения при рестарте (резервные)

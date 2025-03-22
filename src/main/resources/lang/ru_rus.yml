@@ -13,6 +13,18 @@ messages:
   invalid-time: "Неверный формат времени. Используйте ЧЧ:ММ"
   restart-time-set: "Время рестарта установлено на %time%"
   interval-set: "Интервал рестарта установлен на %hours% ч."
+  bossbar-title: "Рестарт сервера через: %time%"
+  bossbar-enabled: "Боссбар включен."
+  bossbar-disabled: "Боссбар отключен."
+  bossbar-color-changed: "Цвет боссбара изменен на %color%."
+  bossbar-style-changed: "Стиль боссбара изменен на %style%."
+  compatibility-mode-set: "Режим совместимости установлен на %mode%"
+  graceful-restart: "Выполняется плавный рестарт сервера..."
+  invalid-color: "Неверный цвет. Доступные цвета: BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW"
+  invalid-style: "Неверный стиль. Доступные стили: SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20"
+  invalid-mode: "Неверный режим. Доступные режимы: NORMAL, GRACEFUL"
+  invalid-hours: "Интервал должен быть от 1 до 24 часов."
+  language-changed: "Язык изменен на %language%."
 
 help:
   title: "=== Помощь по MCAutoRestart ==="
@@ -23,7 +35,13 @@ help:
   set-time: "/autorestart set time ЧЧ:ММ - Установить время рестарта"
   set-interval: "/autorestart set interval <часы> - Установить интервал рестарта в часах"
   reload: "/autorestart reload - Перезагрузить конфигурацию"
-
+  bossbar-enable: "/autorestart bossbar enable - Включить боссбар"
+  bossbar-disable: "/autorestart bossbar disable - Отключить боссбар"
+  bossbar-color: "/autorestart bossbar color <цвет> - Установить цвет боссбара"
+  bossbar-style: "/autorestart bossbar style <стиль> - Установить стиль боссбара"
+  compatibility: "/autorestart compatibility <режим> - Установить режим совместимости"
+  language: "/autorestart language <язык> - Установить язык плагина"
+  
 status:
   title: "=== Статус MCAutoRestart ==="
   state: "Автоперезапуск: %state%"
@@ -33,4 +51,7 @@ status:
   time-until: "Время до рестарта: %time%"
   mode: "Режим работы: %mode%"
   mode-interval: "интервальный (каждые %hours% ч.)"
-  mode-fixed: "фиксированный (в %time%)" 
+  mode-fixed: "фиксированный (в %time%)"
+  bossbar: "Боссбар: %state%"
+  compatibility-mode: "Режим совместимости: %mode%"
+  current-language: "Текущий язык: %language%"

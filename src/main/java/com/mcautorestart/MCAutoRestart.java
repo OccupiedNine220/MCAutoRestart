@@ -2,9 +2,14 @@ package com.mcautorestart;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -15,7 +20,9 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -35,6 +42,19 @@ public class MCAutoRestart extends JavaPlugin {
     private List<Integer> warningMinutes;
     private List<Integer> warningSeconds;
     
+    // Новые поля для боссбара
+    private boolean bossbarEnabled;
+    private int bossbarShowMinutesBefore;
+    private BossBar bossBar;
+    private BarColor bossBarColor;
+    private BarStyle bossBarStyle;
+    private BukkitTask bossBarTask;
+    
+    // Новые поля для улучшенной совместимости
+    private List<String> protectedPlugins;
+    private String compatibilityMode;
+    private int gracefulDelaySeconds;
+    
     @Override
     public void onEnable() {
         logger = getLogger();
@@ -45,6 +65,9 @@ public class MCAutoRestart extends JavaPlugin {
         
         // Загрузка конфигурации
         loadConfig();
+        
+        // Регистрация обработчика событий для добавления игроков на боссбар
+        getServer().getPluginManager().registerEvents(new BukkitListener(), this);
         
         // Запуск задачи рестарта, если включено
         if (restartEnabled) {
@@ -77,6 +100,18 @@ public class MCAutoRestart extends JavaPlugin {
         config.addDefault("notifications.warnings.max_minutes_before", 60);
         config.addDefault("notifications.warnings.minutes", Arrays.asList(60, 30, 15, 10, 5, 4, 3, 2, 1));
         config.addDefault("notifications.warnings.seconds", Arrays.asList(30, 15, 10, 5, 4, 3, 2, 1));
+        
+        // Добавляем значения по умолчанию для боссбара
+        config.addDefault("bossbar.enabled", true);
+        config.addDefault("bossbar.show_minutes_before", 10);
+        config.addDefault("bossbar.color", "RED");
+        config.addDefault("bossbar.style", "SOLID");
+        
+        // Добавляем значения по умолчанию для совместимости
+        config.addDefault("compatibility.protected_plugins", Arrays.asList("Essentials", "WorldGuard", "LuckPerms"));
+        config.addDefault("compatibility.restart_mode", "GRACEFUL");
+        config.addDefault("compatibility.graceful_delay_seconds", 5);
+        
         config.addDefault("language.default", "ru_rus");
         
         config.addDefault("messages.prefix", "&e[MCAutoRestart] &c");
@@ -103,31 +138,38 @@ public class MCAutoRestart extends JavaPlugin {
                 LocalTime time = LocalTime.parse(timeStr, formatter);
                 fixedRestartTimes.add(time);
             } catch (DateTimeParseException e) {
-                logger.warning("Неверный формат времени в конфигурации: " + timeStr);
+                logger.warning("Invalid time format in config: " + timeStr);
             }
         }
         
-        // Загружаем настройки оповещений
-        warningsEnabled = config.getBoolean("notifications.warnings.enabled", true);
-        maxMinutesBefore = config.getInt("notifications.warnings.max_minutes_before", 60);
-        
-        // Загружаем времена предупреждений
+        // Загружаем настройки предупреждений
+        warningsEnabled = config.getBoolean("notifications.warnings.enabled");
+        maxMinutesBefore = config.getInt("notifications.warnings.max_minutes_before");
         warningMinutes = config.getIntegerList("notifications.warnings.minutes");
         warningSeconds = config.getIntegerList("notifications.warnings.seconds");
         
-        // Если списки пустые, устанавливаем значения по умолчанию
-        if (warningMinutes.isEmpty()) {
-            warningMinutes = Arrays.asList(60, 30, 15, 10, 5, 4, 3, 2, 1);
+        // Загружаем настройки боссбара
+        bossbarEnabled = config.getBoolean("bossbar.enabled");
+        bossbarShowMinutesBefore = config.getInt("bossbar.show_minutes_before");
+        
+        try {
+            bossBarColor = BarColor.valueOf(config.getString("bossbar.color"));
+        } catch (IllegalArgumentException e) {
+            bossBarColor = BarColor.RED;
+            logger.warning("Invalid bossbar color in config, using RED as default");
         }
         
-        if (warningSeconds.isEmpty()) {
-            warningSeconds = Arrays.asList(30, 15, 10, 5, 4, 3, 2, 1);
+        try {
+            bossBarStyle = BarStyle.valueOf(config.getString("bossbar.style"));
+        } catch (IllegalArgumentException e) {
+            bossBarStyle = BarStyle.SOLID;
+            logger.warning("Invalid bossbar style in config, using SOLID as default");
         }
         
-        // Фильтруем предупреждения по максимальному времени
-        warningMinutes = warningMinutes.stream()
-                                      .filter(min -> min <= maxMinutesBefore)
-                                      .collect(Collectors.toList());
+        // Загружаем настройки совместимости
+        protectedPlugins = config.getStringList("compatibility.protected_plugins");
+        compatibilityMode = config.getString("compatibility.restart_mode", "GRACEFUL");
+        gracefulDelaySeconds = config.getInt("compatibility.graceful_delay_seconds", 5);
     }
     
     private void saveRestartState() {
@@ -136,116 +178,54 @@ public class MCAutoRestart extends JavaPlugin {
     }
     
     private void scheduleNextRestart() {
-        // Отменяем предыдущую задачу, если она есть
+        // Отменяем текущую задачу рестарта, если она существует
         if (restartTask != null) {
             restartTask.cancel();
         }
         
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime nextRestart;
+        // Время до следующего рестарта (в секундах)
+        long secondsUntilRestart;
         
-        if (restartMode.equalsIgnoreCase("interval")) {
-            // Интервальный режим - рестарт каждые X часов
-            
-            // Определяем следующее время перезапуска
-            int currentHour = now.getHour();
-            int targetHour = (currentHour / intervalHours) * intervalHours;
-            
-            if (now.getHour() == targetHour && now.getMinute() >= intervalMinutes) {
-                // Если мы уже прошли время перезапуска в текущем интервале, переходим к следующему
-                targetHour = (targetHour + intervalHours) % 24;
-            }
-            
-            nextRestart = now.withHour(targetHour)
-                             .withMinute(intervalMinutes)
-                             .withSecond(0)
-                             .withNano(0);
-            
-            // Если расчётное время рестарта в прошлом, добавляем интервал
-            if (nextRestart.isBefore(now)) {
-                nextRestart = nextRestart.plusHours(intervalHours);
-            }
-            
+        // Рассчитываем время до рестарта в зависимости от режима
+        if ("interval".equals(restartMode)) {
+            // Интервальный режим
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime nextRestart = calculateNextIntervalRestart(now);
+            secondsUntilRestart = ChronoUnit.SECONDS.between(now, nextRestart);
         } else {
-            // Фиксированный режим - рестарт в указанное время
-            
-            // Находим ближайшее время рестарта
-            LocalTime currentTime = now.toLocalTime();
-            LocalTime closestTime = null;
-            long minDiff = Long.MAX_VALUE;
-            
-            for (LocalTime restartTime : fixedRestartTimes) {
-                long seconds = currentTime.until(restartTime, ChronoUnit.SECONDS);
-                
-                // Если время рестарта уже прошло, добавляем 24 часа
-                if (seconds < 0) {
-                    seconds += 24 * 60 * 60;
-                }
-                
-                if (seconds < minDiff) {
-                    minDiff = seconds;
-                    closestTime = restartTime;
-                }
-            }
-            
-            if (closestTime == null) {
-                logger.severe("Не удалось определить время следующего рестарта. Времена рестарта не указаны.");
-                return;
-            }
-            
-            // Создаем DateTime для следующего рестарта
-            nextRestart = now.withHour(closestTime.getHour())
-                             .withMinute(closestTime.getMinute())
-                             .withSecond(0)
-                             .withNano(0);
-            
-            // Если расчётное время рестарта в прошлом, добавляем день
-            if (nextRestart.isBefore(now)) {
-                nextRestart = nextRestart.plusDays(1);
-            }
+            // Фиксированный режим
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime nextRestart = calculateNextFixedRestart(now);
+            secondsUntilRestart = ChronoUnit.SECONDS.between(now, nextRestart);
         }
         
-        // Рассчитываем задержку до следующего рестарта
-        long delaySeconds = now.until(nextRestart, ChronoUnit.SECONDS);
-        
-        logger.info("Следующий рестарт запланирован на " + nextRestart + 
-                  " (через " + formatTime(delaySeconds) + ")");
-        
-        // Планируем предупреждения только если они включены
-        if (warningsEnabled) {
-            // Планируем предупреждения перед рестартом (в минутах)
-            for (int warningTime : warningMinutes) {
-                long warningDelaySeconds = delaySeconds - (warningTime * 60);
-                if (warningDelaySeconds > 0) {
-                    int finalWarningTime = warningTime;
-                    Bukkit.getScheduler().runTaskLater(this, () -> 
-                        Bukkit.broadcastMessage(language.getMessage("messages.warning-minutes", "%time%", String.valueOf(finalWarningTime))), 
-                        warningDelaySeconds * 20L);
-                }
-            }
-            
-            // Предупреждения в последнюю минуту (в секундах)
-            for (int sec : warningSeconds) {
-                long warningDelaySeconds = delaySeconds - sec;
-                if (warningDelaySeconds > 0) {
-                    int finalSec = sec;
-                    Bukkit.getScheduler().runTaskLater(this, () -> 
-                        Bukkit.broadcastMessage(language.getMessage("messages.warning-seconds", "%time%", String.valueOf(finalSec))), 
-                        warningDelaySeconds * 20L);
-                }
-            }
-        }
-        
-        // Планируем задачу рестарта
+        // Создаем задачу рестарта
         restartTask = Bukkit.getScheduler().runTaskLater(this, () -> {
-            Bukkit.broadcastMessage(language.getMessage("messages.restart"));
-            
-            // Задержка перед остановкой сервера, чтобы сообщение успело отправиться
+            performRestart();
+        }, secondsUntilRestart * 20L); // тики (20 тиков = 1 секунда)
+        
+        // Если предупреждения включены, планируем их
+        if (warningsEnabled) {
+            scheduleWarnings(secondsUntilRestart);
+        }
+        
+        // Если боссбар включен и до рестарта осталось меньше времени, чем задано,
+        // показываем боссбар
+        if (bossbarEnabled && secondsUntilRestart <= bossbarShowMinutesBefore * 60) {
+            showBossBar(secondsUntilRestart);
+        } else if (bossbarEnabled) {
+            // Планируем показ боссбара через определенное время
+            long secondsUntilBossbar = secondsUntilRestart - (bossbarShowMinutesBefore * 60);
             Bukkit.getScheduler().runTaskLater(this, () -> {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop");
-            }, 20L); // 1 секунда
-            
-        }, delaySeconds * 20L);
+                // Проверяем, что рестарт все еще активен
+                if (restartEnabled) {
+                    long remainingSeconds = bossbarShowMinutesBefore * 60;
+                    showBossBar(remainingSeconds);
+                }
+            }, secondsUntilBossbar * 20L);
+        }
+        
+        logger.info("Запланирован рестарт через " + formatTime(secondsUntilRestart));
     }
     
     private String formatTime(long seconds) {
@@ -287,6 +267,9 @@ public class MCAutoRestart extends JavaPlugin {
                     restartTask.cancel();
                     restartTask = null;
                 }
+                if (bossBar != null) {
+                    hideBossBar();
+                }
                 sender.sendMessage(language.getMessage("messages.disabled"));
                 break;
                 
@@ -296,8 +279,8 @@ public class MCAutoRestart extends JavaPlugin {
                 loadConfig();
                 
                 // Перезагрузка языковых файлов
-                String langCode = getConfig().getString("language.default", "ru_rus");
-                language.loadLanguage(langCode);
+                String defaultLangCode = getConfig().getString("language.default", "ru_rus");
+                language.loadLanguage(defaultLangCode);
                 
                 // Перезапуск задачи рестарта, если включено
                 if (restartEnabled) {
@@ -309,6 +292,118 @@ public class MCAutoRestart extends JavaPlugin {
                 
             case "status":
                 showStatus(sender);
+                break;
+                
+            case "bossbar":
+                if (args.length < 2) {
+                    showHelp(sender);
+                    return true;
+                }
+                
+                switch (args[1].toLowerCase()) {
+                    case "enable":
+                        bossbarEnabled = true;
+                        config.set("bossbar.enabled", true);
+                        saveConfig();
+                        sender.sendMessage(language.getMessage("messages.bossbar-enabled"));
+                        
+                        // Если рестарт запланирован, обновляем боссбар
+                        if (restartEnabled && restartTask != null) {
+                            scheduleNextRestart();
+                        }
+                        break;
+                        
+                    case "disable":
+                        bossbarEnabled = false;
+                        config.set("bossbar.enabled", false);
+                        saveConfig();
+                        hideBossBar();
+                        sender.sendMessage(language.getMessage("messages.bossbar-disabled"));
+                        break;
+                        
+                    case "color":
+                        if (args.length < 3) {
+                            showHelp(sender);
+                            return true;
+                        }
+                        
+                        try {
+                            BarColor color = BarColor.valueOf(args[2].toUpperCase());
+                            bossBarColor = color;
+                            config.set("bossbar.color", color.name());
+                            saveConfig();
+                            sender.sendMessage(language.getMessage("messages.bossbar-color-changed", "%color%", color.name()));
+                            
+                            // Обновляем боссбар, если он активен
+                            if (bossBar != null) {
+                                bossBar.setColor(color);
+                            }
+                        } catch (IllegalArgumentException e) {
+                            sender.sendMessage(language.getMessage("messages.invalid-color"));
+                        }
+                        break;
+                        
+                    case "style":
+                        if (args.length < 3) {
+                            showHelp(sender);
+                            return true;
+                        }
+                        
+                        try {
+                            BarStyle style = BarStyle.valueOf(args[2].toUpperCase());
+                            bossBarStyle = style;
+                            config.set("bossbar.style", style.name());
+                            saveConfig();
+                            sender.sendMessage(language.getMessage("messages.bossbar-style-changed", "%style%", style.name()));
+                            
+                            // Обновляем боссбар, если он активен
+                            if (bossBar != null) {
+                                bossBar.setStyle(style);
+                            }
+                        } catch (IllegalArgumentException e) {
+                            sender.sendMessage(language.getMessage("messages.invalid-style"));
+                        }
+                        break;
+                        
+                    default:
+                        showHelp(sender);
+                        break;
+                }
+                break;
+                
+            case "compatibility":
+                if (args.length < 2) {
+                    showHelp(sender);
+                    return true;
+                }
+                
+                String mode = args[1].toUpperCase();
+                if ("NORMAL".equals(mode) || "GRACEFUL".equals(mode)) {
+                    compatibilityMode = mode;
+                    config.set("compatibility.restart_mode", mode);
+                    saveConfig();
+                    sender.sendMessage(language.getMessage("messages.compatibility-mode-set", "%mode%", mode));
+                } else {
+                    sender.sendMessage(language.getMessage("messages.invalid-mode"));
+                }
+                break;
+                
+            case "language":
+                if (args.length < 2) {
+                    showHelp(sender);
+                    return true;
+                }
+                
+                String languageCode = args[1].toLowerCase();
+                // Проверяем доступные языки
+                if (Arrays.asList("ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz").contains(languageCode)) {
+                    config.set("language.default", languageCode);
+                    saveConfig();
+                    language.loadLanguage(languageCode);
+                    sender.sendMessage(language.getMessage("messages.language-changed", "%language%", languageCode));
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Invalid language code. Available codes: ru_rus, en_eng, de_deu, es_esp, be_bel, kk_kaz");
+                }
                 break;
                 
             case "set":
@@ -365,7 +460,7 @@ public class MCAutoRestart extends JavaPlugin {
                         try {
                             int hours = Integer.parseInt(args[2]);
                             if (hours < 1 || hours > 24) {
-                                sender.sendMessage(ChatColor.RED + "Интервал должен быть от 1 до 24 часов.");
+                                sender.sendMessage(language.getMessage("messages.invalid-hours"));
                                 return true;
                             }
                             
@@ -396,13 +491,7 @@ public class MCAutoRestart extends JavaPlugin {
             case "now":
                 if (args.length > 1 && args[1].equalsIgnoreCase("confirm")) {
                     sender.sendMessage(language.getMessage("messages.restarting-now"));
-                    
-                    Bukkit.broadcastMessage(language.getMessage("messages.restart"));
-                    
-                    // Задержка перед остановкой сервера
-                    Bukkit.getScheduler().runTaskLater(this, () -> {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop");
-                    }, 20L * 3); // 3 секунды
+                    performRestart();
                 } else {
                     sender.sendMessage(language.getMessage("messages.confirm-restart", 
                                        "%command%", "/autorestart now confirm"));
@@ -424,53 +513,10 @@ public class MCAutoRestart extends JavaPlugin {
         // Определяем следующее время перезапуска
         if (restartMode.equalsIgnoreCase("interval")) {
             // Интервальный режим
-            int currentHour = now.getHour();
-            int targetHour = (currentHour / intervalHours) * intervalHours;
-            
-            if (now.getHour() == targetHour && now.getMinute() >= intervalMinutes) {
-                targetHour = (targetHour + intervalHours) % 24;
-            }
-            
-            nextRestart = now.withHour(targetHour)
-                             .withMinute(intervalMinutes)
-                             .withSecond(0)
-                             .withNano(0);
-            
-            if (nextRestart.isBefore(now)) {
-                nextRestart = nextRestart.plusHours(intervalHours);
-            }
+            nextRestart = calculateNextIntervalRestart(now);
         } else {
             // Фиксированный режим
-            LocalTime currentTime = now.toLocalTime();
-            LocalTime closestTime = null;
-            long minDiff = Long.MAX_VALUE;
-            
-            for (LocalTime restartTime : fixedRestartTimes) {
-                long seconds = currentTime.until(restartTime, ChronoUnit.SECONDS);
-                
-                if (seconds < 0) {
-                    seconds += 24 * 60 * 60;
-                }
-                
-                if (seconds < minDiff) {
-                    minDiff = seconds;
-                    closestTime = restartTime;
-                }
-            }
-            
-            if (closestTime == null) {
-                sender.sendMessage(ChatColor.RED + "Ошибка: времена рестарта не указаны.");
-                return;
-            }
-            
-            nextRestart = now.withHour(closestTime.getHour())
-                             .withMinute(closestTime.getMinute())
-                             .withSecond(0)
-                             .withNano(0);
-            
-            if (nextRestart.isBefore(now)) {
-                nextRestart = nextRestart.plusDays(1);
-            }
+            nextRestart = calculateNextFixedRestart(now);
         }
         
         long delaySeconds = now.until(nextRestart, ChronoUnit.SECONDS);
@@ -512,6 +558,18 @@ public class MCAutoRestart extends JavaPlugin {
                                   "%mode%", language.getMessage("status.mode-fixed",
                                                                "%time%", timesStr.toString())));
             }
+            
+            // Статус боссбара
+            sender.sendMessage(language.getMessage("status.bossbar",
+                              "%state%", bossbarEnabled ? stateEnabled : stateDisabled));
+            
+            // Режим совместимости
+            sender.sendMessage(language.getMessage("status.compatibility-mode",
+                              "%mode%", compatibilityMode));
+            
+            // Текущий язык
+            sender.sendMessage(language.getMessage("status.current-language",
+                              "%language%", language.getCurrentLang()));
         }
     }
     
@@ -524,5 +582,236 @@ public class MCAutoRestart extends JavaPlugin {
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.set-interval"));
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.reload"));
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.now"));
+        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-enable"));
+        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-disable"));
+        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-color"));
+        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-style"));
+        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.compatibility"));
+        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.language"));
+    }
+    
+    /**
+     * Создает и показывает боссбар, отображающий время до рестарта
+     * 
+     * @param secondsUntilRestart количество секунд до рестарта
+     */
+    private void showBossBar(long secondsUntilRestart) {
+        // Если боссбар уже существует, отменяем связанную задачу
+        if (bossBar != null) {
+            if (bossBarTask != null) {
+                bossBarTask.cancel();
+            }
+            bossBar.removeAll();
+            Bukkit.getScheduler().cancelTask(bossBarTask.getTaskId());
+        }
+        
+        // Создаем новый боссбар
+        bossBar = Bukkit.createBossBar(
+            language.getMessage("messages.bossbar-title", "%time%", formatTime(secondsUntilRestart)),
+            bossBarColor,
+            bossBarStyle
+        );
+        
+        // Добавляем всех игроков на сервере
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            bossBar.addPlayer(player);
+        }
+        
+        // Используем AtomicLong для безопасного изменения в лямбде
+        final java.util.concurrent.atomic.AtomicLong remainingSeconds = new java.util.concurrent.atomic.AtomicLong(secondsUntilRestart);
+        
+        // Создаем задачу для обновления боссбара
+        bossBarTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
+            long seconds = remainingSeconds.decrementAndGet();
+            
+            if (seconds <= 0) {
+                // Время вышло, удаляем боссбар
+                bossBar.removeAll();
+                bossBarTask.cancel();
+                return;
+            }
+            
+            // Обновляем текст боссбара
+            bossBar.setTitle(language.getMessage("messages.bossbar-title", "%time%", formatTime(seconds)));
+            
+            // Обновляем прогресс боссбара (от 1.0 до 0.0)
+            double progress = Math.max(0.0, Math.min(1.0, seconds / (bossbarShowMinutesBefore * 60.0)));
+            bossBar.setProgress(progress);
+            
+            // Меняем цвет боссбара в зависимости от оставшегося времени
+            if (seconds <= 60) {
+                bossBar.setColor(BarColor.RED);
+            } else if (seconds <= 300) {
+                bossBar.setColor(BarColor.YELLOW);
+            }
+        }, 0L, 20L); // Обновляем каждую секунду
+    }
+    
+    /**
+     * Скрывает боссбар, если он существует
+     */
+    private void hideBossBar() {
+        if (bossBar != null) {
+            bossBar.removeAll();
+            
+            if (bossBarTask != null) {
+                bossBarTask.cancel();
+            }
+        }
+    }
+    
+    /**
+     * Обрабатывает появление нового игрока для добавления его к боссбару
+     * 
+     * @param player игрок, который присоединился
+     */
+    public void addPlayerToBossBar(Player player) {
+        if (bossBar != null) {
+            bossBar.addPlayer(player);
+        }
+    }
+    
+    /**
+     * Рассчитывает время следующего рестарта для интервального режима
+     * 
+     * @param now текущее время
+     * @return время следующего рестарта
+     */
+    private LocalDateTime calculateNextIntervalRestart(LocalDateTime now) {
+        // Определяем следующее время перезапуска
+        int currentHour = now.getHour();
+        int targetHour = (currentHour / intervalHours) * intervalHours;
+        
+        if (now.getHour() == targetHour && now.getMinute() >= intervalMinutes) {
+            // Если мы уже прошли время перезапуска в текущем интервале, переходим к следующему
+            targetHour = (targetHour + intervalHours) % 24;
+        }
+        
+        LocalDateTime nextRestart = now.withHour(targetHour)
+                                     .withMinute(intervalMinutes)
+                                     .withSecond(0)
+                                     .withNano(0);
+        
+        // Если расчётное время рестарта в прошлом, добавляем интервал
+        if (nextRestart.isBefore(now)) {
+            nextRestart = nextRestart.plusHours(intervalHours);
+        }
+        
+        return nextRestart;
+    }
+    
+    /**
+     * Рассчитывает время следующего рестарта для фиксированного режима
+     * 
+     * @param now текущее время
+     * @return время следующего рестарта
+     */
+    private LocalDateTime calculateNextFixedRestart(LocalDateTime now) {
+        // Находим ближайшее время рестарта
+        LocalTime currentTime = now.toLocalTime();
+        LocalTime closestTime = null;
+        long minDiff = Long.MAX_VALUE;
+        
+        for (LocalTime restartTime : fixedRestartTimes) {
+            long seconds = currentTime.until(restartTime, ChronoUnit.SECONDS);
+            
+            // Если время рестарта уже прошло, добавляем 24 часа
+            if (seconds < 0) {
+                seconds += 24 * 60 * 60;
+            }
+            
+            if (seconds < minDiff) {
+                minDiff = seconds;
+                closestTime = restartTime;
+            }
+        }
+        
+        if (closestTime == null) {
+            logger.severe("Не удалось определить время следующего рестарта. Времена рестарта не указаны.");
+            return now.plusHours(24); // Если что-то пошло не так, рестарт через 24 часа
+        }
+        
+        // Создаем DateTime для следующего рестарта
+        LocalDateTime nextRestart = now.withHour(closestTime.getHour())
+                                     .withMinute(closestTime.getMinute())
+                                     .withSecond(0)
+                                     .withNano(0);
+        
+        // Если расчётное время рестарта в прошлом, добавляем день
+        if (nextRestart.isBefore(now)) {
+            nextRestart = nextRestart.plusDays(1);
+        }
+        
+        return nextRestart;
+    }
+    
+    /**
+     * Планирует предупреждения о рестарте
+     * 
+     * @param secondsUntilRestart количество секунд до рестарта
+     */
+    private void scheduleWarnings(long secondsUntilRestart) {
+        // Планируем предупреждения перед рестартом (в минутах)
+        for (int warningTime : warningMinutes) {
+            long warningDelaySeconds = secondsUntilRestart - (warningTime * 60);
+            if (warningDelaySeconds > 0) {
+                final int finalWarningTime = warningTime;
+                Bukkit.getScheduler().runTaskLater(this, () -> 
+                    Bukkit.broadcastMessage(language.getMessage("messages.warning-minutes", "%time%", String.valueOf(finalWarningTime))), 
+                    warningDelaySeconds * 20L);
+            }
+        }
+        
+        // Предупреждения в последнюю минуту (в секундах)
+        for (int sec : warningSeconds) {
+            long warningDelaySeconds = secondsUntilRestart - sec;
+            if (warningDelaySeconds > 0) {
+                final int finalSec = sec;
+                Bukkit.getScheduler().runTaskLater(this, () -> 
+                    Bukkit.broadcastMessage(language.getMessage("messages.warning-seconds", "%time%", String.valueOf(finalSec))), 
+                    warningDelaySeconds * 20L);
+            }
+        }
+    }
+    
+    /**
+     * Выполняет рестарт сервера с учетом настроек совместимости
+     */
+    private void performRestart() {
+        Bukkit.broadcastMessage(language.getMessage("messages.restart"));
+        
+        if ("GRACEFUL".equalsIgnoreCase(compatibilityMode)) {
+            // Плавный рестарт с защитой плагинов
+            logger.info(language.getMessage("messages.graceful-restart"));
+            
+            // Отменить все задачи, кроме тех, что относятся к защищенным плагинам
+            Bukkit.getScheduler().getPendingTasks().forEach(task -> {
+                Plugin taskOwner = task.getOwner();
+                if (taskOwner != null && !protectedPlugins.contains(taskOwner.getName()) && taskOwner != this) {
+                    task.cancel();
+                }
+            });
+            
+            // Задержка перед остановкой сервера
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop");
+            }, 20L * gracefulDelaySeconds);
+        } else {
+            // Обычный рестарт
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop");
+            }, 20L * 3); // 3 секунды
+        }
+    }
+    
+    // Класс для обработки событий Bukkit
+    private class BukkitListener implements org.bukkit.event.Listener {
+        @org.bukkit.event.EventHandler
+        public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+            // Добавляем игрока к боссбару, если он активен
+            if (bossBar != null) {
+                bossBar.addPlayer(event.getPlayer());
+            }
+        }
     }
 } 
