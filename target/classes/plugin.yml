@@ -1,13 +1,13 @@
 name: MCAutoRestart
-version: '1.1'
+version: '1.2'
 main: com.mcautorestart.MCAutoRestart
-api-version: '1.21'
+api-version: '1.20'
 authors: [MCAutoRestartTeam]
-description: Advanced plugin for automatic server restart with customizable settings and BossBar support
+description: Advanced plugin for automatic server restart with conditional restart, plugin integration, and flexible configuration
 commands:
   autorestart:
     description: Control automatic server restarts
-    usage: /<command> [enable|disable|status|set|reload|now]
+    usage: /<command> [enable|disable|status|set|reload|now|condition|api]
     permission: mcautorestart.admin
 permissions:
   mcautorestart.admin:

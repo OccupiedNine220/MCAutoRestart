@@ -30,6 +30,118 @@ fixed:
     - "14:00"
     - "22:00"
 
+# Настройки условных рестартов (по умолчанию отключены)
+# Conditional restart settings (disabled by default)
+conditional_restart:
+  # Включить/отключить условные рестарты (true/false)
+  # Enable/disable conditional restarts (true/false)
+  enabled: false
+  
+  # Как часто проверять условия (в секундах)
+  # How often to check conditions (in seconds)
+  check_interval: 60
+  
+  # Минимальный интервал между условными рестартами (в минутах)
+  # Minimum interval between conditional restarts (in minutes)
+  min_interval_between_restarts: 30
+  
+  # Необходимо выполнение всех условий для рестарта (если false - достаточно одного)
+  # All conditions must be met for restart (if false - one is enough)
+  require_all_conditions: false
+  
+  # Настройки проверки TPS (тиков в секунду)
+  # TPS (ticks per second) check settings
+  tps:
+    # Включить/отключить проверку TPS
+    # Enable/disable TPS check
+    enabled: false
+    
+    # Минимальное значение TPS для рестарта
+    # Minimum TPS value for restart
+    min_value: 15.0
+    
+    # Длительность низкого TPS в секундах для срабатывания
+    # Duration of low TPS in seconds for triggering
+    duration: 300
+  
+  # Настройки проверки использования памяти
+  # Memory usage check settings
+  memory:
+    # Включить/отключить проверку памяти
+    # Enable/disable memory check
+    enabled: false
+    
+    # Максимальное использование памяти (процент от максимально доступной)
+    # Maximum memory usage (percentage of maximum available)
+    max_usage_percent: 90
+    
+    # Длительность высокого использования памяти в секундах для срабатывания
+    # Duration of high memory usage in seconds for triggering
+    duration: 300
+  
+  # Настройки проверки количества игроков
+  # Player count check settings
+  player_count:
+    # Включить/отключить проверку количества игроков
+    # Enable/disable player count check
+    enabled: false
+    
+    # Максимальное количество игроков для рестарта (рестарт когда онлайн меньше этого значения)
+    # Maximum player count for restart (restart when online is less than this value)
+    max_players: 3
+    
+    # Длительность низкого онлайна в секундах для срабатывания
+    # Duration of low online in seconds for triggering
+    duration: 600
+    
+    # Не рестартить если нет игроков вообще (true/false)
+    # Don't restart if there are no players at all (true/false)
+    skip_if_empty: true
+
+# Настройки API для интеграции с другими плагинами
+# API settings for integration with other plugins
+api:
+  # Включить/отключить API для других плагинов
+  # Enable/disable API for other plugins
+  enabled: true
+  
+  # События, на которые могут реагировать другие плагины
+  # Events that other plugins can react to
+  events:
+    # Уведомлять другие плагины перед рестартом (в минутах)
+    # Notify other plugins before restart (in minutes)
+    notify_before_restart: [10, 5, 1]
+  
+  # Возможность для других плагинов отложить перезапуск
+  # Ability for other plugins to delay restart
+  delay_requests:
+    # Разрешить отложенный перезапуск другими плагинами
+    # Allow delayed restart by other plugins
+    enabled: true
+    
+    # Максимальное время отсрочки (в минутах)
+    # Maximum delay time (in minutes)
+    max_delay: 15
+    
+    # Максимальное количество запросов на отсрочку за один рестарт
+    # Maximum number of delay requests per one restart
+    max_requests: 3
+  
+  # Возможность для других плагинов отменить перезапуск
+  # Ability for other plugins to cancel restart
+  cancel_requests:
+    # Разрешить отмену перезапуска другими плагинами
+    # Allow restart cancellation by other plugins
+    enabled: false
+    
+    # Максимальное количество запросов на отмену за один день
+    # Maximum number of cancellation requests per day
+    max_daily_requests: 2
+    
+    # Необходимые разрешения для отмены (названия плагинов, которым разрешена отмена)
+    # Required permissions for cancellation (names of plugins allowed to cancel)
+    allowed_plugins: []
+
 # Настройки оповещений
 # Notification settings
 notifications:

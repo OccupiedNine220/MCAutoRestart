@@ -1,6 +1,6 @@
 # MCAutoRestart Changelog
 
-## Version 1.1 (2025-03-22)
+## Version 1.2 (2025-05-03)
 
 ### Important Notice
 **Always create a backup of your server and configuration files before updating!**
@@ -20,48 +20,32 @@ Note: Make sure to use `clean` (not "clear") when building with Maven
 4. Restart your server or use `/reload`
 
 ### Added
-- Support for Bukkit 1.21.3
-- BossBar timer showing countdown to server restart
-- BossBar customization (color and style)
-- Enhanced compatibility mode with other plugins
-- Protected plugins system to prevent task cancellation during restarts
-- New languages: Belarusian and Kazakh
-- Language selection command: `/autorestart language <code>`
+- **Conditional restart system** with flexible configuration:
+  - Restart based on low TPS (ticks per second)
+  - Restart based on high memory usage
+  - Restart based on low player count
+  - All conditional restarts are disabled by default
+- **Plugin integration API** for allowing other plugins to:
+  - Receive notifications about upcoming restarts
+  - Request delay of a restart
+  - Request cancellation of a restart
+- Added support for Minecraft 1.20.x
 
 ### Improved
-- More flexible restart options
-- Better notification system
-- Enhanced language system with more localized messages
-- Automatic player BossBar integration when joining the server
-- Fixed variable naming conflicts in the code
-- Lambda expression handling for better Java compliance
-
-### Fixed
-- Various performance optimizations
-- Better error handling for time formats
-- Fixed compatibility issues with other plugins
-- Resolved compilation issues with variable scopes
+- Enhanced command system with new commands for managing conditional restarts and API
+- Better configuration options with more detailed comments
+- More efficient restart scheduling
 
 ### Commands
-- New commands for BossBar management:
-  - `/autorestart bossbar enable` - Enable BossBar
-  - `/autorestart bossbar disable` - Disable BossBar
-  - `/autorestart bossbar color <color>` - Change BossBar color
-  - `/autorestart bossbar style <style>` - Change BossBar style
-- Added compatibility settings command:
-  - `/autorestart compatibility <mode>` - Switch between NORMAL and GRACEFUL modes
-- Added language switching command:
-  - `/autorestart language <lang>` - Change plugin language
+- New commands for conditional restart management:
+  - `/autorestart condition` - Show conditional restart status
+  - `/autorestart condition enable` - Enable conditional restarts
+  - `/autorestart condition disable` - Disable conditional restarts
+- New commands for API management:
+  - `/autorestart api` - Show API status and active delay requests
+  - `/autorestart api reset` - Reset API delay request counters
 
 ### Configuration
-- New BossBar settings section
-- New compatibility options
-- Added new language codes: "be_bel" and "kk_kaz"
-
-### Available Languages
-- Russian (ru_rus) - Default
-- English (en_eng)
-- German (de_deu)
-- Spanish (es_esp)
-- Belarusian (be_bel) - New!
-- Kazakh (kk_kaz) - New! 
+- New `conditional_restart` section for configuring conditional restarts
+- New `api` section for configuring plugin integration options
+- Both new features are designed to be very flexible and configurable
