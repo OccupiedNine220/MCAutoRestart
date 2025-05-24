@@ -2,6 +2,7 @@
 
 Advanced plugin for automatic Minecraft server restart with flexible settings.
 
+Offical mirror - https://git.qndk.fun/occupiednine220/MCAutoRestart
 ## Features
 
 - **Two operation modes**: 
