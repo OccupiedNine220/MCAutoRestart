@@ -1,3 +1,4 @@
+com/mcautorestart/TaskScheduler$ScheduledTask.class
 com/mcautorestart/RestartAPI$RestartDelayRequest.class
 com/mcautorestart/RestartEventListener.class
 com/mcautorestart/BaseRestartEventListener.class
@@ -5,6 +6,7 @@ com/mcautorestart/ConditionalRestart$ConditionState.class
 com/mcautorestart/Language.class
 com/mcautorestart/MCAutoRestart.class
 com/mcautorestart/MCAutoRestart$BukkitListener.class
+com/mcautorestart/TaskScheduler.class
 com/mcautorestart/MCAutoRestart$1.class
 com/mcautorestart/RestartAPI.class
 com/mcautorestart/ConditionalRestart.class

@@ -1,3 +1,4 @@
+/root/MCAutoRestart/src/main/java/com/mcautorestart/TaskScheduler.java
 /root/MCAutoRestart/src/main/java/com/mcautorestart/BaseRestartEventListener.java
 /root/MCAutoRestart/src/main/java/com/mcautorestart/RestartEventListener.java
 /root/MCAutoRestart/src/main/java/com/mcautorestart/ConditionalRestart.java

@@ -62,6 +62,9 @@ public class MCAutoRestart extends JavaPlugin {
     // Поля для условных рестартов и API
     private ConditionalRestart conditionalRestart;
     private RestartAPI restartAPI;
+    
+    // Поле для планировщика задач
+    private TaskScheduler taskScheduler;
 
     // Новые поля для заголовков (titles)
     private boolean titlesEnabled;
@@ -101,6 +104,9 @@ public class MCAutoRestart extends JavaPlugin {
 
         // Загрузка конфигурации
         loadConfig();
+        
+        // Инициализация планировщика задач
+        taskScheduler = new TaskScheduler(this);
 
         // Инициализация API для интеграции с плагинами
         restartAPI = new RestartAPI(this);
@@ -119,7 +125,7 @@ public class MCAutoRestart extends JavaPlugin {
             scheduleNextRestart();
         }
 
-        logger.info("MCAutoRestart v1.2 включен. Рестарты " +
+        logger.info("MCAutoRestart v1.3.1 включен. Рестарты " +
                 (restartEnabled ? "активированы" : "отключены") +
                 ". Режим: " + restartMode);
 
@@ -129,6 +135,10 @@ public class MCAutoRestart extends JavaPlugin {
 
         if (restartAPI.isEnabled()) {
             logger.info("API для интеграции с плагинами: активировано");
+        }
+        
+        if (taskScheduler.isEnabled()) {
+            logger.info("Планировщик задач: активирован");
         }
     }
 
@@ -148,6 +158,11 @@ public class MCAutoRestart extends JavaPlugin {
         
         // Останавливаем показ строки действий
         stopActionBar();
+        
+        // Отменяем все задачи в планировщике
+        if (taskScheduler != null) {
+            taskScheduler.cancelAllTasks();
+        }
 
         logger.info("MCAutoRestart отключен");
     }
@@ -176,6 +191,11 @@ public class MCAutoRestart extends JavaPlugin {
         config.addDefault("compatibility.protected_plugins", Arrays.asList("Essentials", "WorldGuard", "LuckPerms"));
         config.addDefault("compatibility.restart_mode", "GRACEFUL");
         config.addDefault("compatibility.graceful_delay_seconds", 5);
+        
+        // Значения по умолчанию для планировщика задач
+        config.addDefault("task_scheduler.enabled", true);
+        config.addDefault("task_scheduler.max_concurrent_tasks", 10);
+        config.addDefault("task_scheduler.log_execution", true);
 
         config.addDefault("language.default", "ru_rus");
 
@@ -711,6 +731,58 @@ public class MCAutoRestart extends JavaPlugin {
                 }
                 break;
 
+            case "tasks":
+                if (args.length >= 1 && "tasks".equalsIgnoreCase(args[0])) {
+                    // Управление планировщиком задач
+                    if (args.length >= 2) {
+                        if ("enable".equalsIgnoreCase(args[1]) || "on".equalsIgnoreCase(args[1])) {
+                            taskScheduler.setEnabled(true);
+                            config.set("task_scheduler.enabled", true);
+                            saveConfig();
+                            sender.sendMessage(language.getMessage("messages.tasks-enabled"));
+                            return true;
+                        } else if ("disable".equalsIgnoreCase(args[1]) || "off".equalsIgnoreCase(args[1])) {
+                            taskScheduler.setEnabled(false);
+                            config.set("task_scheduler.enabled", false);
+                            saveConfig();
+                            sender.sendMessage(language.getMessage("messages.tasks-disabled"));
+                            return true;
+                        } else if ("list".equalsIgnoreCase(args[1])) {
+                            // Показать список активных задач
+                            Map<String, String> tasksInfo = taskScheduler.getTasksInfo();
+                            sender.sendMessage(language.getMessage("messages.tasks-list", "%count%", String.valueOf(tasksInfo.size())));
+                            for (Map.Entry<String, String> entry : tasksInfo.entrySet()) {
+                                sender.sendMessage(language.getMessage("messages.tasks-item", "%name%", entry.getValue(), "%id%", entry.getKey()));
+                            }
+                            return true;
+                        } else if ("cancel".equalsIgnoreCase(args[1]) && args.length >= 3) {
+                            // Отменить задачу по ID
+                            String taskId = args[2];
+                            boolean cancelled = taskScheduler.cancelTask(taskId);
+                            if (cancelled) {
+                                sender.sendMessage(language.getMessage("messages.tasks-cancelled", "%id%", taskId));
+                            } else {
+                                sender.sendMessage(language.getMessage("messages.tasks-not-found", "%id%", taskId));
+                            }
+                            return true;
+                        } else if ("cancelall".equalsIgnoreCase(args[1])) {
+                            // Отменить все задачи
+                            taskScheduler.cancelAllTasks();
+                            sender.sendMessage(language.getMessage("messages.tasks-all-cancelled"));
+                            return true;
+                        } else if ("status".equalsIgnoreCase(args[1])) {
+                            sender.sendMessage(language.getMessage("messages.tasks-status", "%status%", 
+                                taskScheduler.isEnabled() ? "§aвключен" : "§cотключен"));
+                            sender.sendMessage("§eАктивных задач: §7" + taskScheduler.getActiveTaskCount());
+                            return true;
+                        }
+                    }
+                    sender.sendMessage(language.getMessage("messages.tasks-status", "%status%", 
+                        taskScheduler.isEnabled() ? "§aвключен" : "§cотключен"));
+                    sender.sendMessage("§eАктивных задач: §7" + taskScheduler.getActiveTaskCount());
+                    return true;
+                }
+
             default:
                 showHelp(sender);
                 break;
@@ -830,6 +902,11 @@ public class MCAutoRestart extends JavaPlugin {
         // Новые команды для API
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.api-status"));
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.api-reset"));
+        
+        // Новые команды для планировщика задач
+        sender.sendMessage(ChatColor.YELLOW + "/autorestart tasks status - Показать статус планировщика задач");
+        sender.sendMessage(ChatColor.YELLOW + "/autorestart tasks list - Показать список активных задач");
+        sender.sendMessage(ChatColor.YELLOW + "/autorestart tasks enable|disable - Включить/отключить планировщик задач");
     }
 
     /**
@@ -844,7 +921,10 @@ public class MCAutoRestart extends JavaPlugin {
                 bossBarTask.cancel();
             }
             bossBar.removeAll();
-            Bukkit.getScheduler().cancelTask(bossBarTask.getTaskId());
+            // Исправление бага: проверяем, что bossBarTask не null перед вызовом getTaskId()
+            if (bossBarTask != null) {
+                Bukkit.getScheduler().cancelTask(bossBarTask.getTaskId());
+            }
         }
 
         // Создаем новый боссбар
@@ -861,10 +941,15 @@ public class MCAutoRestart extends JavaPlugin {
         // Используем AtomicLong для безопасного изменения в лямбде
         final java.util.concurrent.atomic.AtomicLong remainingSeconds = new java.util.concurrent.atomic.AtomicLong(
                 secondsUntilRestart);
+                
+        // Исправляем баг с некорректным вычислением оставшегося времени
+        final long startTime = System.currentTimeMillis() / 1000;
 
-        // Создаем задачу для обновления боссбара
+        // Создаем задачу для обновления боссбара с использованием нашего планировщика
         bossBarTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
-            long seconds = remainingSeconds.decrementAndGet();
+            // Вычисляем оставшееся время с учетом прошедшего времени
+            long elapsed = System.currentTimeMillis() / 1000 - startTime;
+            long seconds = secondsUntilRestart - elapsed;
 
             if (seconds <= 0) {
                 // Время вышло, удаляем боссбар
@@ -900,7 +985,7 @@ public class MCAutoRestart extends JavaPlugin {
             }
             bossBar = null;
         }
-        
+
         if (bossBarTask != null) {
             bossBarTask.cancel();
             bossBarTask = null;
@@ -1008,7 +1093,7 @@ public class MCAutoRestart extends JavaPlugin {
             long warningDelaySeconds = secondsUntilRestart - (warningTime * 60);
             if (warningDelaySeconds > 0 && warningTime <= maxMinutesBefore) {
                 final int finalWarningTime = warningTime;
-                Bukkit.getScheduler().runTaskLater(this, () -> {
+                taskScheduler.scheduleTask("warning_minutes_" + finalWarningTime, warningDelaySeconds * 20L, () -> {
                     // Отправляем сообщение в чат
                     Bukkit.broadcastMessage(language.getMessage("messages.warning-minutes", "%time%",
                             String.valueOf(finalWarningTime)));
@@ -1025,7 +1110,7 @@ public class MCAutoRestart extends JavaPlugin {
                     if (titlesEnabled && titleMinutes.contains(finalWarningTime) && finalWarningTime <= titlesShowMinutesBefore) {
                         showTitle(finalWarningTime * 60);
                     }
-                }, warningDelaySeconds * 20L);
+                });
             }
         }
 
@@ -1034,7 +1119,7 @@ public class MCAutoRestart extends JavaPlugin {
             long warningDelaySeconds = secondsUntilRestart - sec;
             if (warningDelaySeconds > 0) {
                 final int finalSec = sec;
-                Bukkit.getScheduler().runTaskLater(this, () -> {
+                taskScheduler.scheduleTask("warning_seconds_" + finalSec, warningDelaySeconds * 20L, () -> {
                     // Отправляем сообщение в чат
                     Bukkit.broadcastMessage(
                             language.getMessage("messages.warning-seconds", "%time%", String.valueOf(finalSec)));
@@ -1051,7 +1136,7 @@ public class MCAutoRestart extends JavaPlugin {
                     if (titlesEnabled && titleSeconds.contains(finalSec)) {
                         showTitle(finalSec);
                     }
-                }, warningDelaySeconds * 20L);
+                });
             }
         }
         
@@ -1062,9 +1147,9 @@ public class MCAutoRestart extends JavaPlugin {
             // Запланировать показ боссбара позже
             long secondsToShowBossBar = secondsUntilRestart - (bossbarShowMinutesBefore * 60);
             if (secondsToShowBossBar > 0 && bossbarEnabled) {
-                Bukkit.getScheduler().runTaskLater(this, () -> {
+                taskScheduler.scheduleTask("show_bossbar", secondsToShowBossBar * 20L, () -> {
                     showBossBar(bossbarShowMinutesBefore * 60);
-                }, secondsToShowBossBar * 20L);
+                });
             }
         }
         
@@ -1075,9 +1160,9 @@ public class MCAutoRestart extends JavaPlugin {
             // Запланировать показ строки действий позже
             long secondsToShowActionBar = secondsUntilRestart - (actionbarShowMinutesBefore * 60);
             if (secondsToShowActionBar > 0 && actionbarEnabled) {
-                Bukkit.getScheduler().runTaskLater(this, () -> {
+                taskScheduler.scheduleTask("show_actionbar", secondsToShowActionBar * 20L, () -> {
                     startActionBar(actionbarShowMinutesBefore * 60);
-                }, secondsToShowActionBar * 20L);
+                });
             }
         }
     }
@@ -1101,14 +1186,14 @@ public class MCAutoRestart extends JavaPlugin {
             });
 
             // Задержка перед остановкой сервера
-            Bukkit.getScheduler().runTaskLater(this, () -> {
+            taskScheduler.scheduleTask("graceful_restart", 20L * gracefulDelaySeconds, () -> {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop");
-            }, 20L * gracefulDelaySeconds);
+            });
         } else {
             // Обычный рестарт
-            Bukkit.getScheduler().runTaskLater(this, () -> {
+            taskScheduler.scheduleTask("quick_restart", 20L * 3, () -> {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop");
-            }, 20L * 3); // 3 секунды
+            });
         }
     }
 
@@ -1174,11 +1259,14 @@ public class MCAutoRestart extends JavaPlugin {
             actionbarTask.cancel();
         }
         
-        // Запускаем новую задачу
+        // Исправляем баг с некорректным вычислением оставшегося времени
+        final long startTime = System.currentTimeMillis() / 1000;
+        
+        // Запускаем новую задачу с использованием планировщика
         actionbarTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
             @Override
             public void run() {
-                long current = secondsUntilRestart - (System.currentTimeMillis() / 1000 - System.currentTimeMillis() / 1000);
+                long current = secondsUntilRestart - (System.currentTimeMillis() / 1000 - startTime);
                 if (current <= 0) {
                     if (actionbarTask != null) {
                         actionbarTask.cancel();

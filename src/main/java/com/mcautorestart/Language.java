@@ -35,6 +35,16 @@ public class Language {
         for (String key : plugin.getConfig().getConfigurationSection("messages").getKeys(false)) {
             fallbackMessages.put("messages." + key, plugin.getConfig().getString("messages." + key));
         }
+        
+        // Добавляем сообщения для планировщика задач
+        fallbackMessages.put("messages.tasks-enabled", "Планировщик задач включен");
+        fallbackMessages.put("messages.tasks-disabled", "Планировщик задач отключен");
+        fallbackMessages.put("messages.tasks-status", "Планировщик задач: %status%");
+        fallbackMessages.put("messages.tasks-list", "Активные задачи (%count%):");
+        fallbackMessages.put("messages.tasks-item", "- %name% (ID: %id%)");
+        fallbackMessages.put("messages.tasks-cancelled", "Задача с ID %id% отменена");
+        fallbackMessages.put("messages.tasks-not-found", "Задача с ID %id% не найдена");
+        fallbackMessages.put("messages.tasks-all-cancelled", "Все задачи отменены");
     }
     
     public void loadLanguage(String lang) {

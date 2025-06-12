@@ -1,6 +1,6 @@
 # MCAutoRestart Changelog
 
-## Version 1.3 (2025-06-12)
+## Version 1.3.1 (2025-06-12) NOT STABLE!!!
 
 ### Important Notice
 **Always create a backup of your server and configuration files before updating!**
@@ -20,28 +20,26 @@ Note: Make sure to use `clean` (not "clear") when building with Maven
 4. Restart your server or use `/reload`
 
 ### Added
-- **Enhanced language support** with new language files:
-  - Ukrainian (uk_ukr.yml)
-  - Polish (pl_pol.yml)
-  - French (fr_fra.yml)
-- **Improved visual notifications system**:
-  - Title and subtitle warnings for more visible notifications
-  - Actionbar messages for continuous countdown display
-  - Sound effects with configurable sounds for different warning levels
-  - Visual particle effects around players during warnings
-
-### Improved
-- More flexible notification configuration with separate settings for each notification type
-- Enhanced language system with better fallback mechanism
-- More immersive player experience during restart countdown
+- **New Task Scheduler system**:
+  - Improved task management with error handling
+  - Ability to track and manage active tasks
+  - Configurable task limits and logging
+  
+### Fixed
+- Fixed incorrect time calculation in the actionbar display
+- Fixed potential NullPointerException in the bossbar display
+- Fixed various timing issues with notifications
 
 ### Commands
-- New commands for notification management:
-  - `/autorestart sounds enable|disable` - Enable or disable sound notifications
-  - `/autorestart effects enable|disable` - Enable or disable visual particle effects
+- New commands for task management:
+  - `/autorestart tasks status` - Show task scheduler status
+  - `/autorestart tasks list` - List all active tasks
+  - `/autorestart tasks enable|disable` - Enable or disable the task scheduler
+  - `/autorestart tasks cancel <id>` - Cancel a specific task
+  - `/autorestart tasks cancelall` - Cancel all active tasks
 
 ### Configuration
-- New `notifications.titles` section for configuring title notifications
-- New `notifications.actionbar` section for configuring actionbar messages
-- New `notifications.sounds` section for configuring sound effects
-- New `notifications.visual_effects` section for configuring particle effects
+- New `task_scheduler` section in config.yml:
+  - `enabled`: Enable or disable the task scheduler (default: true)
+  - `max_concurrent_tasks`: Maximum number of concurrent tasks (default: 10)
+  - `log_execution`: Whether to log task execution in console (default: true)
