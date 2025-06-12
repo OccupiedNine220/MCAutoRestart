@@ -7,7 +7,7 @@ description: Advanced plugin for automatic server restart with conditional resta
 commands:
   autorestart:
     description: Control automatic server restarts
-    usage: /<command> [enable|disable|status|set|reload|now|condition|api]
+    usage: /<command> [enable|disable|status|set|reload|now|condition|api|sounds|effects|language]
     permission: mcautorestart.admin
 permissions:
   mcautorestart.admin:

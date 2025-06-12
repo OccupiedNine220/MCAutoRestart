@@ -163,6 +163,88 @@ notifications:
     # Времена предупреждений в секундах перед рестартом (в последнюю минуту)
     # Warning times in seconds before restart (in the last minute)
     seconds: [30, 15, 10, 5, 4, 3, 2, 1]
+  
+  # Настройки заголовков (titles)
+  # Title settings
+  titles:
+    # Включить/отключить заголовки (true/false)
+    # Enable/disable titles (true/false)
+    enabled: true
+    
+    # Когда показывать заголовки (в минутах до рестарта)
+    # When to show titles (in minutes before restart)
+    show_minutes_before: 5
+    
+    # Времена показа заголовков в минутах перед рестартом
+    # Times to show titles in minutes before restart
+    minutes: [5, 3, 2, 1]
+    
+    # Времена показа заголовков в секундах перед рестартом (в последнюю минуту)
+    # Times to show titles in seconds before restart (in the last minute)
+    seconds: [30, 15, 10, 5, 3, 2, 1]
+    
+    # Настройки отображения заголовков
+    # Title display settings
+    fade_in: 10
+    stay: 70
+    fade_out: 20
+  
+  # Настройки строки действий (actionbar)
+  # Actionbar settings
+  actionbar:
+    # Включить/отключить строку действий (true/false)
+    # Enable/disable actionbar (true/false)
+    enabled: true
+    
+    # Когда показывать строку действий (в минутах до рестарта)
+    # When to show actionbar (in minutes before restart)
+    show_minutes_before: 3
+    
+    # Частота обновления строки действий (в тиках, 20 тиков = 1 секунда)
+    # Update frequency of actionbar (in ticks, 20 ticks = 1 second)
+    update_frequency: 20
+  
+  # Настройки звуковых эффектов
+  # Sound effects settings
+  sounds:
+    # Включить/отключить звуковые эффекты (true/false)
+    # Enable/disable sound effects (true/false)
+    enabled: true
+    
+    # Тип звука для предупреждений (ENTITY_EXPERIENCE_ORB_PICKUP, BLOCK_NOTE_BLOCK_PLING, ENTITY_PLAYER_LEVELUP и т.д.)
+    # Sound type for warnings (ENTITY_EXPERIENCE_ORB_PICKUP, BLOCK_NOTE_BLOCK_PLING, ENTITY_PLAYER_LEVELUP etc.)
+    warning_sound: ENTITY_EXPERIENCE_ORB_PICKUP
+    
+    # Громкость звука (0.0 - 1.0)
+    # Sound volume (0.0 - 1.0)
+    volume: 1.0
+    
+    # Высота звука (0.5 - 2.0)
+    # Sound pitch (0.5 - 2.0)
+    pitch: 1.0
+    
+    # Звук для последних секунд перед рестартом
+    # Sound for the last seconds before restart
+    final_warning_sound: ENTITY_PLAYER_LEVELUP
+  
+  # Настройки визуальных эффектов
+  # Visual effects settings
+  visual_effects:
+    # Включить/отключить визуальные эффекты (true/false)
+    # Enable/disable visual effects (true/false)
+    enabled: true
+    
+    # Тип эффекта (FLAME, HEART, SMOKE, FIREWORKS_SPARK и т.д.)
+    # Effect type (FLAME, HEART, SMOKE, FIREWORKS_SPARK etc.)
+    effect_type: FLAME
+    
+    # Количество частиц
+    # Number of particles
+    count: 50
+    
+    # Радиус эффекта вокруг игрока
+    # Effect radius around player
+    radius: 1.0
 
 # Настройки боссбара
 # BossBar settings
@@ -204,8 +286,8 @@ compatibility:
 # Настройки языка
 # Language settings
 language:
-  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz"
-  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz"
+  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz", "pl_pol", "fr_fra"
+  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz", "pl_pol", "fr_fra"
   default: "ru_rus"
 
 # Сообщения при рестарте (резервные)

@@ -25,6 +25,13 @@ messages:
   invalid-mode: "Invalid mode. Available modes: NORMAL, GRACEFUL"
   invalid-hours: "Interval must be between 1 and 24 hours."
   language-changed: "Language changed to %language%."
+  title-warning: "Restart"
+  subtitle-warning: "In %time%"
+  actionbar-warning: "&c⚠ &eServer restart in %time% &c⚠"
+  sound-enabled: "Warning sounds enabled."
+  sound-disabled: "Warning sounds disabled."
+  visual-effects-enabled: "Visual effects enabled."
+  visual-effects-disabled: "Visual effects disabled."
 
 help:
   title: "=== MCAutoRestart Help ==="

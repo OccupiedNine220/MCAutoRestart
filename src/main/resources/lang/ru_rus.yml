@@ -25,6 +25,13 @@ messages:
   invalid-mode: "Неверный режим. Доступные режимы: NORMAL, GRACEFUL"
   invalid-hours: "Интервал должен быть от 1 до 24 часов."
   language-changed: "Язык изменен на %language%."
+  title-warning: "Рестарт"
+  subtitle-warning: "Через %time%"
+  actionbar-warning: "&c⚠ &eРестарт сервера через %time% &c⚠"
+  sound-enabled: "Звуковые оповещения включены."
+  sound-disabled: "Звуковые оповещения отключены."
+  visual-effects-enabled: "Визуальные эффекты включены."
+  visual-effects-disabled: "Визуальные эффекты отключены."
 
 help:
   title: "=== Помощь по MCAutoRestart ==="

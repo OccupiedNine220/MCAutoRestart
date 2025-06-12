@@ -2,6 +2,10 @@ package com.mcautorestart;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Effect;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -42,7 +46,7 @@ public class MCAutoRestart extends JavaPlugin {
     private List<Integer> warningMinutes;
     private List<Integer> warningSeconds;
 
-    // Новые поля для боссбара
+    // Поля для боссбара
     private boolean bossbarEnabled;
     private int bossbarShowMinutesBefore;
     private BossBar bossBar;
@@ -50,14 +54,42 @@ public class MCAutoRestart extends JavaPlugin {
     private BarStyle bossBarStyle;
     private BukkitTask bossBarTask;
 
-    // Новые поля для улучшенной совместимости
+    // Поля для улучшенной совместимости
     private List<String> protectedPlugins;
     private String compatibilityMode;
     private int gracefulDelaySeconds;
 
-    // Новые поля для условных рестартов и API
+    // Поля для условных рестартов и API
     private ConditionalRestart conditionalRestart;
     private RestartAPI restartAPI;
+
+    // Новые поля для заголовков (titles)
+    private boolean titlesEnabled;
+    private int titlesShowMinutesBefore;
+    private List<Integer> titleMinutes;
+    private List<Integer> titleSeconds;
+    private int titleFadeIn;
+    private int titleStay;
+    private int titleFadeOut;
+
+    // Новые поля для строки действий (actionbar)
+    private boolean actionbarEnabled;
+    private int actionbarShowMinutesBefore;
+    private int actionbarUpdateFrequency;
+    private BukkitTask actionbarTask;
+
+    // Новые поля для звуковых эффектов
+    private boolean soundsEnabled;
+    private String warningSound;
+    private String finalWarningSound;
+    private float soundVolume;
+    private float soundPitch;
+
+    // Новые поля для визуальных эффектов
+    private boolean visualEffectsEnabled;
+    private String effectType;
+    private int effectCount;
+    private double effectRadius;
 
     @Override
     public void onEnable() {
@@ -113,6 +145,9 @@ public class MCAutoRestart extends JavaPlugin {
 
         // Скрываем боссбар, если он отображается
         hideBossBar();
+        
+        // Останавливаем показ строки действий
+        stopActionBar();
 
         logger.info("MCAutoRestart отключен");
     }
@@ -195,6 +230,39 @@ public class MCAutoRestart extends JavaPlugin {
             bossBarStyle = BarStyle.SOLID;
             logger.warning("Invalid bossbar style in config, using SOLID as default");
         }
+
+        // Загружаем настройки заголовков (titles)
+        titlesEnabled = config.getBoolean("notifications.titles.enabled", true);
+        titlesShowMinutesBefore = config.getInt("notifications.titles.show_minutes_before", 5);
+        titleMinutes = config.getIntegerList("notifications.titles.minutes");
+        if (titleMinutes.isEmpty()) {
+            titleMinutes = Arrays.asList(5, 3, 2, 1);
+        }
+        titleSeconds = config.getIntegerList("notifications.titles.seconds");
+        if (titleSeconds.isEmpty()) {
+            titleSeconds = Arrays.asList(30, 15, 10, 5, 3, 2, 1);
+        }
+        titleFadeIn = config.getInt("notifications.titles.fade_in", 10);
+        titleStay = config.getInt("notifications.titles.stay", 70);
+        titleFadeOut = config.getInt("notifications.titles.fade_out", 20);
+
+        // Загружаем настройки строки действий (actionbar)
+        actionbarEnabled = config.getBoolean("notifications.actionbar.enabled", true);
+        actionbarShowMinutesBefore = config.getInt("notifications.actionbar.show_minutes_before", 3);
+        actionbarUpdateFrequency = config.getInt("notifications.actionbar.update_frequency", 20);
+
+        // Загружаем настройки звуковых эффектов
+        soundsEnabled = config.getBoolean("notifications.sounds.enabled", true);
+        warningSound = config.getString("notifications.sounds.warning_sound", "ENTITY_EXPERIENCE_ORB_PICKUP");
+        finalWarningSound = config.getString("notifications.sounds.final_warning_sound", "ENTITY_PLAYER_LEVELUP");
+        soundVolume = (float) config.getDouble("notifications.sounds.volume", 1.0);
+        soundPitch = (float) config.getDouble("notifications.sounds.pitch", 1.0);
+
+        // Загружаем настройки визуальных эффектов
+        visualEffectsEnabled = config.getBoolean("notifications.visual_effects.enabled", true);
+        effectType = config.getString("notifications.visual_effects.effect_type", "FLAME");
+        effectCount = config.getInt("notifications.visual_effects.count", 50);
+        effectRadius = config.getDouble("notifications.visual_effects.radius", 1.0);
 
         // Загружаем настройки совместимости
         protectedPlugins = config.getStringList("compatibility.protected_plugins");
@@ -446,6 +514,48 @@ public class MCAutoRestart extends JavaPlugin {
                 config.set("language.default", langCode);
                 saveConfig();
                 sender.sendMessage(language.getMessage("messages.language-changed", "%lang%", langCode));
+                break;
+
+            case "sounds":
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.RED + "Использование: /autorestart sounds <enable|disable>");
+                    return true;
+                }
+
+                if (args[1].equalsIgnoreCase("enable")) {
+                    soundsEnabled = true;
+                    config.set("notifications.sounds.enabled", true);
+                    saveConfig();
+                    sender.sendMessage(language.getMessage("messages.sound-enabled"));
+                } else if (args[1].equalsIgnoreCase("disable")) {
+                    soundsEnabled = false;
+                    config.set("notifications.sounds.enabled", false);
+                    saveConfig();
+                    sender.sendMessage(language.getMessage("messages.sound-disabled"));
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Использование: /autorestart sounds <enable|disable>");
+                }
+                break;
+
+            case "effects":
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.RED + "Использование: /autorestart effects <enable|disable>");
+                    return true;
+                }
+
+                if (args[1].equalsIgnoreCase("enable")) {
+                    visualEffectsEnabled = true;
+                    config.set("notifications.visual_effects.enabled", true);
+                    saveConfig();
+                    sender.sendMessage(language.getMessage("messages.visual-effects-enabled"));
+                } else if (args[1].equalsIgnoreCase("disable")) {
+                    visualEffectsEnabled = false;
+                    config.set("notifications.visual_effects.enabled", false);
+                    saveConfig();
+                    sender.sendMessage(language.getMessage("messages.visual-effects-disabled"));
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Использование: /autorestart effects <enable|disable>");
+                }
                 break;
 
             case "set":
@@ -707,6 +817,10 @@ public class MCAutoRestart extends JavaPlugin {
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-style"));
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.compatibility"));
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.language"));
+        
+        // Новые команды для визуальных оповещений
+        sender.sendMessage(ChatColor.YELLOW + "/autorestart sounds <enable|disable> - Включить/отключить звуковые оповещения");
+        sender.sendMessage(ChatColor.YELLOW + "/autorestart effects <enable|disable> - Включить/отключить визуальные эффекты");
 
         // Новые команды для условных рестартов
         sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.condition-status"));
@@ -780,11 +894,16 @@ public class MCAutoRestart extends JavaPlugin {
      */
     private void hideBossBar() {
         if (bossBar != null) {
-            bossBar.removeAll();
-
-            if (bossBarTask != null) {
-                bossBarTask.cancel();
+            bossBar.setVisible(false);
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                bossBar.removePlayer(player);
             }
+            bossBar = null;
+        }
+        
+        if (bossBarTask != null) {
+            bossBarTask.cancel();
+            bossBarTask = null;
         }
     }
 
@@ -875,20 +994,38 @@ public class MCAutoRestart extends JavaPlugin {
     }
 
     /**
-     * Планирует предупреждения о рестарте
+     * Планирует предупреждения о перезапуске
      * 
      * @param secondsUntilRestart количество секунд до рестарта
      */
     private void scheduleWarnings(long secondsUntilRestart) {
+        if (!warningsEnabled) {
+            return;
+        }
+        
         // Планируем предупреждения перед рестартом (в минутах)
         for (int warningTime : warningMinutes) {
             long warningDelaySeconds = secondsUntilRestart - (warningTime * 60);
-            if (warningDelaySeconds > 0) {
+            if (warningDelaySeconds > 0 && warningTime <= maxMinutesBefore) {
                 final int finalWarningTime = warningTime;
-                Bukkit.getScheduler().runTaskLater(this,
-                        () -> Bukkit.broadcastMessage(language.getMessage("messages.warning-minutes", "%time%",
-                                String.valueOf(finalWarningTime))),
-                        warningDelaySeconds * 20L);
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    // Отправляем сообщение в чат
+                    Bukkit.broadcastMessage(language.getMessage("messages.warning-minutes", "%time%",
+                            String.valueOf(finalWarningTime)));
+                            
+                    // Проигрываем звук предупреждения
+                    playWarningSound(false);
+                    
+                    // Показываем визуальные эффекты
+                    if (visualEffectsEnabled) {
+                        showVisualEffects();
+                    }
+                    
+                    // Показываем заголовок, если он включен и настроен для этого времени
+                    if (titlesEnabled && titleMinutes.contains(finalWarningTime) && finalWarningTime <= titlesShowMinutesBefore) {
+                        showTitle(finalWarningTime * 60);
+                    }
+                }, warningDelaySeconds * 20L);
             }
         }
 
@@ -897,10 +1034,50 @@ public class MCAutoRestart extends JavaPlugin {
             long warningDelaySeconds = secondsUntilRestart - sec;
             if (warningDelaySeconds > 0) {
                 final int finalSec = sec;
-                Bukkit.getScheduler().runTaskLater(this,
-                        () -> Bukkit.broadcastMessage(
-                                language.getMessage("messages.warning-seconds", "%time%", String.valueOf(finalSec))),
-                        warningDelaySeconds * 20L);
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    // Отправляем сообщение в чат
+                    Bukkit.broadcastMessage(
+                            language.getMessage("messages.warning-seconds", "%time%", String.valueOf(finalSec)));
+                            
+                    // Проигрываем звук финального предупреждения для последних секунд
+                    playWarningSound(finalSec <= 10);
+                    
+                    // Показываем визуальные эффекты
+                    if (visualEffectsEnabled) {
+                        showVisualEffects();
+                    }
+                    
+                    // Показываем заголовок, если он включен и настроен для этого времени
+                    if (titlesEnabled && titleSeconds.contains(finalSec)) {
+                        showTitle(finalSec);
+                    }
+                }, warningDelaySeconds * 20L);
+            }
+        }
+        
+        // Показать боссбар, если включен
+        if (bossbarEnabled && secondsUntilRestart <= bossbarShowMinutesBefore * 60) {
+            showBossBar(secondsUntilRestart);
+        } else {
+            // Запланировать показ боссбара позже
+            long secondsToShowBossBar = secondsUntilRestart - (bossbarShowMinutesBefore * 60);
+            if (secondsToShowBossBar > 0 && bossbarEnabled) {
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    showBossBar(bossbarShowMinutesBefore * 60);
+                }, secondsToShowBossBar * 20L);
+            }
+        }
+        
+        // Запустить строку действий (actionbar), если включена
+        if (actionbarEnabled && secondsUntilRestart <= actionbarShowMinutesBefore * 60) {
+            startActionBar(secondsUntilRestart);
+        } else {
+            // Запланировать показ строки действий позже
+            long secondsToShowActionBar = secondsUntilRestart - (actionbarShowMinutesBefore * 60);
+            if (secondsToShowActionBar > 0 && actionbarEnabled) {
+                Bukkit.getScheduler().runTaskLater(this, () -> {
+                    startActionBar(actionbarShowMinutesBefore * 60);
+                }, secondsToShowActionBar * 20L);
             }
         }
     }
@@ -960,6 +1137,141 @@ public class MCAutoRestart extends JavaPlugin {
             if (bossBar != null) {
                 bossBar.addPlayer(event.getPlayer());
             }
+        }
+    }
+
+    /**
+     * Показывает заголовок (title) всем игрокам
+     * 
+     * @param secondsUntilRestart секунд до рестарта
+     */
+    private void showTitle(long secondsUntilRestart) {
+        if (!titlesEnabled) {
+            return;
+        }
+        
+        String formattedTime = formatTime(secondsUntilRestart);
+        String title = language.getMessage("messages.title-warning");
+        String subtitle = language.getMessage("messages.subtitle-warning", "%time%", formattedTime);
+        
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.sendTitle(title, subtitle, titleFadeIn, titleStay, titleFadeOut);
+        }
+    }
+    
+    /**
+     * Запускает задачу показа строки действий (actionbar)
+     * 
+     * @param secondsUntilRestart секунд до рестарта
+     */
+    private void startActionBar(long secondsUntilRestart) {
+        if (!actionbarEnabled) {
+            return;
+        }
+        
+        // Отменяем предыдущую задачу, если она существует
+        if (actionbarTask != null) {
+            actionbarTask.cancel();
+        }
+        
+        // Запускаем новую задачу
+        actionbarTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
+            @Override
+            public void run() {
+                long current = secondsUntilRestart - (System.currentTimeMillis() / 1000 - System.currentTimeMillis() / 1000);
+                if (current <= 0) {
+                    if (actionbarTask != null) {
+                        actionbarTask.cancel();
+                        actionbarTask = null;
+                    }
+                    return;
+                }
+                
+                String formattedTime = formatTime(current);
+                String message = language.getMessage("messages.actionbar-warning", "%time%", formattedTime);
+                
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, 
+                            net.md_5.bungee.api.chat.TextComponent.fromLegacyText(message));
+                }
+            }
+        }, 0L, actionbarUpdateFrequency);
+    }
+    
+    /**
+     * Останавливает показ строки действий
+     */
+    private void stopActionBar() {
+        if (actionbarTask != null) {
+            actionbarTask.cancel();
+            actionbarTask = null;
+        }
+    }
+    
+    /**
+     * Проигрывает звук предупреждения всем игрокам
+     * 
+     * @param isFinal true если это финальное предупреждение (последние секунды)
+     */
+    private void playWarningSound(boolean isFinal) {
+        if (!soundsEnabled) {
+            return;
+        }
+        
+        String soundName = isFinal ? finalWarningSound : warningSound;
+        
+        try {
+            Sound sound = Sound.valueOf(soundName);
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.playSound(player.getLocation(), sound, soundVolume, soundPitch);
+            }
+        } catch (IllegalArgumentException e) {
+            logger.warning("Invalid sound name: " + soundName);
+        }
+    }
+    
+    /**
+     * Показывает визуальные эффекты вокруг игроков
+     */
+    private void showVisualEffects() {
+        if (!visualEffectsEnabled) {
+            return;
+        }
+        
+        try {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Location loc = player.getLocation();
+                
+                // Пытаемся использовать новый API частиц, если не получится - используем старый API эффектов
+                try {
+                    Particle particle = Particle.valueOf(effectType);
+                    
+                    for (int i = 0; i < effectCount; i++) {
+                        double x = loc.getX() + (Math.random() * 2 - 1) * effectRadius;
+                        double y = loc.getY() + (Math.random() * 2) * effectRadius;
+                        double z = loc.getZ() + (Math.random() * 2 - 1) * effectRadius;
+                        
+                        loc.getWorld().spawnParticle(particle, x, y, z, 1, 0, 0, 0, 0);
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Если не нашли частицу, пробуем использовать эффект
+                    try {
+                        Effect effect = Effect.valueOf(effectType);
+                        
+                        for (int i = 0; i < effectCount; i++) {
+                            double x = loc.getX() + (Math.random() * 2 - 1) * effectRadius;
+                            double y = loc.getY() + (Math.random() * 2) * effectRadius;
+                            double z = loc.getZ() + (Math.random() * 2 - 1) * effectRadius;
+                            
+                            loc.getWorld().playEffect(new Location(loc.getWorld(), x, y, z), effect, 0);
+                        }
+                    } catch (IllegalArgumentException ex) {
+                        logger.warning("Invalid effect/particle type: " + effectType);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Error showing visual effects: " + e.getMessage());
         }
     }
 }
