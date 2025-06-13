@@ -128,4 +128,4 @@ The plugin allows for flexible configuration of the notification system:
 MCAutoRestart is distributed under the MIT license. 
 
 ## Star History
-[![Star History Chart](https://api.star-history.com/svg?repos=OccupiedNine220/KayfMess,OccupiedNine220/MCAutoRestart&type=Date)](https://www.star-history.com/#OccupiedNine220/KayfMess&OccupiedNine220/MCAutoRestart&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=OccupiedNine220/MCAutoRestart&type=Date)](https://www.star-history.com/#OccupiedNine220/MCAutoRestart&Date)
