@@ -34,7 +34,7 @@ messages:
   visual-effects-disabled: "Visual effects disabled."
 
 help:
-  title: "=== MCAutoRestart Help ==="
+  header: "=== MCAutoRestart Help ==="
   enable: "/autorestart enable - Enable automatic restart"
   disable: "/autorestart disable - Disable automatic restart"
   status: "/autorestart status - View status and time until next restart"
@@ -48,6 +48,7 @@ help:
   bossbar-style: "/autorestart bossbar style <style> - Set BossBar style"
   compatibility: "/autorestart compatibility <mode> - Set compatibility mode"
   language: "/autorestart language <language> - Set plugin language"
+  tasks: "/autorestart tasks - Manage task scheduler"
 
 status:
   title: "=== MCAutoRestart Status ==="
@@ -61,4 +62,8 @@ status:
   mode-fixed: "fixed (at %time%)"
   bossbar: "BossBar: %state%"
   compatibility-mode: "Compatibility mode: %mode%"
-  current-language: "Current language: %language%" 
+  current-language: "Current language: %language%"
+  task-scheduler: "Task scheduler: %active% active tasks, %errors% errors"
+  conditional-restart: "Conditional restart: %state%"
+  api: "API integration: %state%"
+  api-delays: "API delays: %count% active (%minutes% minutes max)" 

@@ -1,3 +1,12 @@
+/**
+ * ███╗   ███╗ ██████╗ █████╗ ██╗   ██╗████████╗ ██████╗ ██████╗ ███████╗███████╗████████╗ █████╗ ██████╗ ████████╗
+ * ████╗ ████║██╔════╝██╔══██╗██║   ██║╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝
+ * ██╔████╔██║██║     ███████║██║   ██║   ██║   ██║   ██║██████╔╝█████╗  ███████╗   ██║   ███████║██████╔╝   ██║   
+ * ██║╚██╔╝██║██║     ██╔══██║██║   ██║   ██║   ██║   ██║██╔══██╗██╔══╝  ╚════██║   ██║   ██╔══██║██╔══██╗   ██║   
+ * ██║ ╚═╝ ██║╚██████╗██║  ██║╚██████╔╝   ██║   ╚██████╔╝██║  ██║███████╗███████║   ██║   ██║  ██║██║  ██║   ██║   
+ * ╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+ * Source code
+ */
 package com.mcautorestart;
 
 import org.bukkit.Bukkit;
@@ -317,10 +326,12 @@ public class MCAutoRestart extends JavaPlugin {
             secondsUntilRestart = ChronoUnit.SECONDS.between(now, nextRestart);
         }
 
-        // Создаем задачу рестарта
-        restartTask = Bukkit.getScheduler().runTaskLater(this, () -> {
-            performRestart();
-        }, secondsUntilRestart * 20L); // тики (20 тиков = 1 секунда)
+        // Создаем задачу рестарта с высоким приоритетом и категорией "restart"
+        taskScheduler.scheduleTask("server_restart", secondsUntilRestart * 20L, 
+            this::performRestart, "restart", TaskScheduler.TaskPriority.HIGH);
+            
+        // Добавляем совместимости ради для обратной совместимости
+        restartTask = Bukkit.getScheduler().runTaskLater(this, () -> {}, 0L);
 
         // Если предупреждения включены, планируем их
         if (warningsEnabled) {
@@ -389,6 +400,108 @@ public class MCAutoRestart extends JavaPlugin {
                     hideBossBar();
                 }
                 sender.sendMessage(language.getMessage("messages.disabled"));
+                break;
+                
+            case "tasks":
+                if (args.length < 2) {
+                    showTasksHelp(sender);
+                    break;
+                }
+                
+                switch (args[1].toLowerCase()) {
+                    case "list":
+                        showActiveTasks(sender);
+                        break;
+                        
+                    case "stats":
+                        showTaskStats(sender);
+                        break;
+                        
+                    case "cancel":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать ID задачи");
+                            break;
+                        }
+                        if (taskScheduler.cancelTask(args[2])) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Задача отменена");
+                        } else {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Задача не найдена");
+                        }
+                        break;
+                        
+                    case "cancelname":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать имя задачи");
+                            break;
+                        }
+                        int count = taskScheduler.cancelTasksByName(args[2]);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Отменено задач: " + count);
+                        break;
+                        
+                    case "cancelcat":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать категорию задач");
+                            break;
+                        }
+                        count = taskScheduler.cancelTasksByCategory(args[2]);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Отменено задач категории " + args[2] + ": " + count);
+                        break;
+                        
+                    case "cancelall":
+                        taskScheduler.cancelAllTasks();
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Все задачи отменены");
+                        break;
+                        
+                    case "performance":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать on/off");
+                            break;
+                        }
+                        boolean enablePerf = args[2].equalsIgnoreCase("on");
+                        taskScheduler.setPerformanceMonitoring(enablePerf);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Мониторинг производительности " + 
+                                          (enablePerf ? "включен" : "выключен"));
+                        break;
+                        
+                    case "resetstats":
+                        taskScheduler.resetTaskStats();
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Статистика задач сброшена");
+                        break;
+                        
+                    case "addpriority":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать категорию");
+                            break;
+                        }
+                        taskScheduler.addPriorityCategory(args[2]);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Категория " + args[2] + " добавлена в приоритетные");
+                        break;
+                        
+                    case "removepriority":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать категорию");
+                            break;
+                        }
+                        if (taskScheduler.removePriorityCategory(args[2])) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Категория " + args[2] + " удалена из приоритетных");
+                        } else {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Категория не найдена в приоритетных");
+                        }
+                        break;
+                        
+                    case "priorities":
+                        List<String> priorities = taskScheduler.getPriorityCategories();
+                        if (priorities.isEmpty()) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Приоритетных категорий нет");
+                        } else {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Приоритетные категории: " + String.join(", ", priorities));
+                        }
+                        break;
+                        
+                    default:
+                        showTasksHelp(sender);
+                        break;
+                }
                 break;
 
             case "reload":
@@ -732,56 +845,106 @@ public class MCAutoRestart extends JavaPlugin {
                 break;
 
             case "tasks":
-                if (args.length >= 1 && "tasks".equalsIgnoreCase(args[0])) {
-                    // Управление планировщиком задач
-                    if (args.length >= 2) {
-                        if ("enable".equalsIgnoreCase(args[1]) || "on".equalsIgnoreCase(args[1])) {
-                            taskScheduler.setEnabled(true);
-                            config.set("task_scheduler.enabled", true);
-                            saveConfig();
-                            sender.sendMessage(language.getMessage("messages.tasks-enabled"));
-                            return true;
-                        } else if ("disable".equalsIgnoreCase(args[1]) || "off".equalsIgnoreCase(args[1])) {
-                            taskScheduler.setEnabled(false);
-                            config.set("task_scheduler.enabled", false);
-                            saveConfig();
-                            sender.sendMessage(language.getMessage("messages.tasks-disabled"));
-                            return true;
-                        } else if ("list".equalsIgnoreCase(args[1])) {
-                            // Показать список активных задач
-                            Map<String, String> tasksInfo = taskScheduler.getTasksInfo();
-                            sender.sendMessage(language.getMessage("messages.tasks-list", "%count%", String.valueOf(tasksInfo.size())));
-                            for (Map.Entry<String, String> entry : tasksInfo.entrySet()) {
-                                sender.sendMessage(language.getMessage("messages.tasks-item", "%name%", entry.getValue(), "%id%", entry.getKey()));
-                            }
-                            return true;
-                        } else if ("cancel".equalsIgnoreCase(args[1]) && args.length >= 3) {
-                            // Отменить задачу по ID
-                            String taskId = args[2];
-                            boolean cancelled = taskScheduler.cancelTask(taskId);
-                            if (cancelled) {
-                                sender.sendMessage(language.getMessage("messages.tasks-cancelled", "%id%", taskId));
-                            } else {
-                                sender.sendMessage(language.getMessage("messages.tasks-not-found", "%id%", taskId));
-                            }
-                            return true;
-                        } else if ("cancelall".equalsIgnoreCase(args[1])) {
-                            // Отменить все задачи
-                            taskScheduler.cancelAllTasks();
-                            sender.sendMessage(language.getMessage("messages.tasks-all-cancelled"));
-                            return true;
-                        } else if ("status".equalsIgnoreCase(args[1])) {
-                            sender.sendMessage(language.getMessage("messages.tasks-status", "%status%", 
-                                taskScheduler.isEnabled() ? "§aвключен" : "§cотключен"));
-                            sender.sendMessage("§eАктивных задач: §7" + taskScheduler.getActiveTaskCount());
-                            return true;
-                        }
-                    }
-                    sender.sendMessage(language.getMessage("messages.tasks-status", "%status%", 
-                        taskScheduler.isEnabled() ? "§aвключен" : "§cотключен"));
-                    sender.sendMessage("§eАктивных задач: §7" + taskScheduler.getActiveTaskCount());
-                    return true;
+                if (args.length < 2) {
+                    showTasksHelp(sender);
+                    break;
                 }
+                
+                switch (args[1].toLowerCase()) {
+                    case "list":
+                        showActiveTasks(sender);
+                        break;
+                        
+                    case "stats":
+                        showTaskStats(sender);
+                        break;
+                        
+                    case "cancel":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать ID задачи");
+                            break;
+                        }
+                        if (taskScheduler.cancelTask(args[2])) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Задача отменена");
+                        } else {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Задача не найдена");
+                        }
+                        break;
+                        
+                    case "cancelname":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать имя задачи");
+                            break;
+                        }
+                        int count = taskScheduler.cancelTasksByName(args[2]);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Отменено задач: " + count);
+                        break;
+                        
+                    case "cancelcat":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать категорию задач");
+                            break;
+                        }
+                        count = taskScheduler.cancelTasksByCategory(args[2]);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Отменено задач категории " + args[2] + ": " + count);
+                        break;
+                        
+                    case "cancelall":
+                        taskScheduler.cancelAllTasks();
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Все задачи отменены");
+                        break;
+                        
+                    case "performance":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать on/off");
+                            break;
+                        }
+                        boolean enablePerf = args[2].equalsIgnoreCase("on");
+                        taskScheduler.setPerformanceMonitoring(enablePerf);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Мониторинг производительности " + 
+                                          (enablePerf ? "включен" : "выключен"));
+                        break;
+                        
+                    case "resetstats":
+                        taskScheduler.resetTaskStats();
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Статистика задач сброшена");
+                        break;
+                        
+                    case "addpriority":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать категорию");
+                            break;
+                        }
+                        taskScheduler.addPriorityCategory(args[2]);
+                        sender.sendMessage(language.getMessage("messages.prefix") + "Категория " + args[2] + " добавлена в приоритетные");
+                        break;
+                        
+                    case "removepriority":
+                        if (args.length < 3) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Необходимо указать категорию");
+                            break;
+                        }
+                        if (taskScheduler.removePriorityCategory(args[2])) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Категория " + args[2] + " удалена из приоритетных");
+                        } else {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Категория не найдена в приоритетных");
+                        }
+                        break;
+                        
+                    case "priorities":
+                        List<String> priorities = taskScheduler.getPriorityCategories();
+                        if (priorities.isEmpty()) {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Приоритетных категорий нет");
+                        } else {
+                            sender.sendMessage(language.getMessage("messages.prefix") + "Приоритетные категории: " + String.join(", ", priorities));
+                        }
+                        break;
+                        
+                    default:
+                        showTasksHelp(sender);
+                        break;
+                }
+                break;
 
             default:
                 showHelp(sender);
@@ -855,6 +1018,13 @@ public class MCAutoRestart extends JavaPlugin {
             // Текущий язык
             sender.sendMessage(language.getMessage("status.current-language",
                     "%language%", language.getCurrentLang()));
+                    
+            // Статус планировщика задач
+            int activeTasks = taskScheduler.getActiveTaskCount();
+            int errorCount = taskScheduler.getErrorCount();
+            sender.sendMessage(language.getMessage("status.task-scheduler",
+                    "%active%", String.valueOf(activeTasks),
+                    "%errors%", String.valueOf(errorCount)));
 
             // Статус условных рестартов
             sender.sendMessage(language.getMessage("status.conditional-restart",
@@ -875,38 +1045,80 @@ public class MCAutoRestart extends JavaPlugin {
     }
 
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(language.getMessage("help.title"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.enable"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.disable"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.status"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.set-time"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.set-interval"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.reload"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.now"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-enable"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-disable"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-color"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.bossbar-style"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.compatibility"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.language"));
+        sender.sendMessage(language.getMessage("messages.help.header"));
+        sender.sendMessage(language.getMessage("messages.help.status"));
+        sender.sendMessage(language.getMessage("messages.help.enable"));
+        sender.sendMessage(language.getMessage("messages.help.disable"));
+        sender.sendMessage(language.getMessage("messages.help.now"));
+        sender.sendMessage(language.getMessage("messages.help.cancel"));
+        sender.sendMessage(language.getMessage("messages.help.schedule"));
+        sender.sendMessage(language.getMessage("messages.help.reload"));
+        sender.sendMessage(language.getMessage("messages.help.tasks"));
+    }
+    
+    private void showTasksHelp(CommandSender sender) {
+        sender.sendMessage(language.getMessage("messages.prefix") + "§6=== Команды управления задачами ===");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks list §7- показать активные задачи");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks stats §7- показать статистику задач");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks cancel <id> §7- отменить задачу по ID");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks cancelname <name> §7- отменить задачи по имени");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks cancelcat <category> §7- отменить задачи по категории");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks cancelall §7- отменить все задачи");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks performance <on/off> §7- управление мониторингом");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks resetstats §7- сбросить статистику");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks addpriority <category> §7- добавить приоритетную категорию");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks removepriority <category> §7- удалить приоритетную категорию");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§e/autorestart tasks priorities §7- показать приоритетные категории");
+    }
+    
+    private void showActiveTasks(CommandSender sender) {
+        Map<String, String> tasks = taskScheduler.getTasksInfo();
         
-        // Новые команды для визуальных оповещений
-        sender.sendMessage(ChatColor.YELLOW + "/autorestart sounds <enable|disable> - Включить/отключить звуковые оповещения");
-        sender.sendMessage(ChatColor.YELLOW + "/autorestart effects <enable|disable> - Включить/отключить визуальные эффекты");
-
-        // Новые команды для условных рестартов
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.condition-status"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.condition-enable"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.condition-disable"));
-
-        // Новые команды для API
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.api-status"));
-        sender.sendMessage(ChatColor.YELLOW + language.getMessage("help.api-reset"));
+        if (tasks.isEmpty()) {
+            sender.sendMessage(language.getMessage("messages.prefix") + "Активных задач нет");
+            return;
+        }
         
-        // Новые команды для планировщика задач
-        sender.sendMessage(ChatColor.YELLOW + "/autorestart tasks status - Показать статус планировщика задач");
-        sender.sendMessage(ChatColor.YELLOW + "/autorestart tasks list - Показать список активных задач");
-        sender.sendMessage(ChatColor.YELLOW + "/autorestart tasks enable|disable - Включить/отключить планировщик задач");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§6=== Активные задачи (" + tasks.size() + ") ===");
+        for (Map.Entry<String, String> entry : tasks.entrySet()) {
+            sender.sendMessage(language.getMessage("messages.prefix") + "§e" + entry.getKey() + ": §7" + entry.getValue());
+        }
+    }
+    
+    private void showTaskStats(CommandSender sender) {
+        Map<String, Integer> stats = taskScheduler.getTaskStats();
+        Map<String, Long> executionTimes = taskScheduler.getTaskExecutionTimes();
+        
+        if (stats.isEmpty()) {
+            sender.sendMessage(language.getMessage("messages.prefix") + "Статистика задач пуста");
+            return;
+        }
+        
+        sender.sendMessage(language.getMessage("messages.prefix") + "§6=== Статистика задач ===");
+        sender.sendMessage(language.getMessage("messages.prefix") + "§7Всего ошибок: §e" + taskScheduler.getErrorCount());
+        sender.sendMessage(language.getMessage("messages.prefix") + "§7Выполнение задач:");
+        
+        Map<String, Integer> successTasks = new HashMap<>();
+        Map<String, Integer> failTasks = new HashMap<>();
+        
+        for (Map.Entry<String, Integer> entry : stats.entrySet()) {
+            String key = entry.getKey();
+            
+            if (key.endsWith("_success")) {
+                successTasks.put(key.substring(0, key.length() - 8), entry.getValue());
+            } else if (key.endsWith("_fail")) {
+                failTasks.put(key.substring(0, key.length() - 5), entry.getValue());
+            }
+        }
+        
+        for (String taskName : successTasks.keySet()) {
+            int success = successTasks.getOrDefault(taskName, 0);
+            int fail = failTasks.getOrDefault(taskName, 0);
+            long time = executionTimes.getOrDefault(taskName, 0L);
+            
+            sender.sendMessage(language.getMessage("messages.prefix") + "§e" + taskName + ": §a" + success + " успешных, §c" + 
+                              fail + " неудачных" + (time > 0 ? ", §7" + time + "мс" : ""));
+        }
     }
 
     /**
@@ -946,7 +1158,7 @@ public class MCAutoRestart extends JavaPlugin {
         final long startTime = System.currentTimeMillis() / 1000;
 
         // Создаем задачу для обновления боссбара с использованием нашего планировщика
-        bossBarTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
+        String taskId = taskScheduler.scheduleRepeatingTask("bossbar_updater", 0L, 20L, () -> {
             // Вычисляем оставшееся время с учетом прошедшего времени
             long elapsed = System.currentTimeMillis() / 1000 - startTime;
             long seconds = secondsUntilRestart - elapsed;
@@ -954,7 +1166,6 @@ public class MCAutoRestart extends JavaPlugin {
             if (seconds <= 0) {
                 // Время вышло, удаляем боссбар
                 bossBar.removeAll();
-                bossBarTask.cancel();
                 return;
             }
 
@@ -971,7 +1182,9 @@ public class MCAutoRestart extends JavaPlugin {
             } else if (seconds <= 300) {
                 bossBar.setColor(BarColor.YELLOW);
             }
-        }, 0L, 20L); // Обновляем каждую секунду
+        }, "ui", TaskScheduler.TaskPriority.NORMAL);
+        
+        bossBarTask = Bukkit.getScheduler().runTaskLater(this, () -> {}, 0L); // Dummy task for compatibility
     }
 
     /**
@@ -986,6 +1199,9 @@ public class MCAutoRestart extends JavaPlugin {
             bossBar = null;
         }
 
+        // Отменяем задачу обновления боссбара с использованием планировщика
+        taskScheduler.cancelTasksByName("bossbar_updater");
+        
         if (bossBarTask != null) {
             bossBarTask.cancel();
             bossBarTask = null;
@@ -1262,18 +1478,13 @@ public class MCAutoRestart extends JavaPlugin {
         // Исправляем баг с некорректным вычислением оставшегося времени
         final long startTime = System.currentTimeMillis() / 1000;
         
-        // Запускаем новую задачу с использованием планировщика
-        actionbarTask = Bukkit.getScheduler().runTaskTimer(this, new Runnable() {
-            @Override
-            public void run() {
-                long current = secondsUntilRestart - (System.currentTimeMillis() / 1000 - startTime);
-                if (current <= 0) {
-                    if (actionbarTask != null) {
-                        actionbarTask.cancel();
-                        actionbarTask = null;
-                    }
-                    return;
-                }
+        // Запускаем новую задачу с использованием планировщика задач
+        String taskId = taskScheduler.scheduleRepeatingTask("actionbar_updater", 0L, actionbarUpdateFrequency, () -> {
+            long current = secondsUntilRestart - (System.currentTimeMillis() / 1000 - startTime);
+            if (current <= 0) {
+                taskScheduler.cancelTasksByName("actionbar_updater");
+                return;
+            }
                 
                 String formattedTime = formatTime(current);
                 String message = language.getMessage("messages.actionbar-warning", "%time%", formattedTime);
@@ -1282,14 +1493,19 @@ public class MCAutoRestart extends JavaPlugin {
                     player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, 
                             net.md_5.bungee.api.chat.TextComponent.fromLegacyText(message));
                 }
-            }
-        }, 0L, actionbarUpdateFrequency);
+            });
+        
+        // Dummy task for compatibility
+        actionbarTask = Bukkit.getScheduler().runTaskLater(this, () -> {}, 0L);
     }
     
     /**
      * Останавливает показ строки действий
      */
     private void stopActionBar() {
+        // Отменяем задачу обновления actionbar с использованием планировщика
+        taskScheduler.cancelTasksByName("actionbar_updater");
+        
         if (actionbarTask != null) {
             actionbarTask.cancel();
             actionbarTask = null;

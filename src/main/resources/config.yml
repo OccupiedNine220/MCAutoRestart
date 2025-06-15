@@ -1,5 +1,10 @@
-# MCAutoRestart configuration
-# Plugin by MCAutoRestartTeam
+# ███╗   ███╗ ██████╗ █████╗ ██╗   ██╗████████╗ ██████╗ ██████╗ ███████╗███████╗████████╗ █████╗ ██████╗ ████████╗
+# ████╗ ████║██╔════╝██╔══██╗██║   ██║╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝
+# ██╔████╔██║██║     ███████║██║   ██║   ██║   ██║   ██║██████╔╝█████╗  ███████╗   ██║   ███████║██████╔╝   ██║   
+# ██║╚██╔╝██║██║     ██╔══██║██║   ██║   ██║   ██║   ██║██╔══██╗██╔══╝  ╚════██║   ██║   ██╔══██║██╔══██╗   ██║   
+# ██║ ╚═╝ ██║╚██████╗██║  ██║╚██████╔╝   ██║   ╚██████╔╝██║  ██║███████╗███████║   ██║   ██║  ██║██║  ██║   ██║   
+# ╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+# Configuration file
 
 # Включить/отключить автоматические перезапуски (true/false)
 # Enable/disable automatic restarts (true/false)
@@ -274,6 +279,7 @@ compatibility:
     - "Essentials"
     - "WorldGuard"
     - "LuckPerms"
+    - "CMI"
   
   # Режим рестарта (NORMAL - обычный, GRACEFUL - плавный)
   # Restart mode (NORMAL - normal, GRACEFUL - graceful)
@@ -283,11 +289,37 @@ compatibility:
   # Delay before restart in seconds (for graceful mode)
   graceful_delay_seconds: 5
 
+# Настройки планировщика задач
+# Task scheduler settings
+task_scheduler:
+  # Включить/отключить планировщик задач (true/false)
+  # Enable/disable task scheduler (true/false)
+  enabled: true
+  
+  # Максимальное количество одновременных задач
+  # Maximum number of concurrent tasks
+  max_concurrent_tasks: 10
+  
+  # Логировать выполнение задач (true/false)
+  # Log task execution (true/false)
+  log_execution: true
+  
+  # Включить/отключить мониторинг производительности (true/false)
+  # Enable/disable performance monitoring (true/false)
+  performance_monitoring: false
+  
+  # Приоритетные категории задач, которые будут выполняться даже при достижении лимита
+  # Priority task categories that will be executed even when the limit is reached
+  priority_categories:
+    - "restart"
+    - "system"
+    - "error_handler"
+
 # Настройки языка
 # Language settings
 language:
-  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz", "pl_pol", "fr_fra"
-  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz", "pl_pol", "fr_fra"
+  # Доступные языки: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz", "pl_pol", "fr_fra", "ja_jpn"
+  # Available languages: "ru_rus", "en_eng", "de_deu", "es_esp", "be_bel", "kk_kaz", "pl_pol", "fr_fra", "ja_jpn"
   default: "ru_rus"
 
 # Сообщения при рестарте (резервные)

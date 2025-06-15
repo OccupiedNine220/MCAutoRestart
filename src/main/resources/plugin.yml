@@ -2,7 +2,7 @@ name: MCAutoRestart
 version: '${project.version}'
 main: com.mcautorestart.MCAutoRestart
 api-version: '1.20'
-authors: [MCAutoRestartTeam]
+authors: [OccupiedNine220]
 description: Advanced plugin for automatic server restart with conditional restart, plugin integration, and flexible configuration
 commands:
   autorestart:

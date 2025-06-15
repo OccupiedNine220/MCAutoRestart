@@ -34,7 +34,7 @@ messages:
   visual-effects-disabled: "Визуальные эффекты отключены."
 
 help:
-  title: "=== Помощь по MCAutoRestart ==="
+  header: "=== Помощь по MCAutoRestart ==="
   enable: "/autorestart enable - Включить автоматический перезапуск"
   disable: "/autorestart disable - Отключить автоматический перезапуск"
   status: "/autorestart status - Просмотр статуса и времени до следующего перезапуска"
@@ -48,6 +48,7 @@ help:
   bossbar-style: "/autorestart bossbar style <стиль> - Установить стиль боссбара"
   compatibility: "/autorestart compatibility <режим> - Установить режим совместимости"
   language: "/autorestart language <язык> - Установить язык плагина"
+  tasks: "/autorestart tasks - Управление планировщиком задач"
   
 status:
   title: "=== Статус MCAutoRestart ==="
@@ -62,3 +63,7 @@ status:
   bossbar: "Боссбар: %state%"
   compatibility-mode: "Режим совместимости: %mode%"
   current-language: "Текущий язык: %language%"
+  task-scheduler: "Планировщик задач: %active% активных задач, %errors% ошибок"
+  conditional-restart: "Условные рестарты: %state%"
+  api: "API интеграция: %state%"
+  api-delays: "Отложенные рестарты API: %count% активных (%minutes% минут макс.)"
